@@ -1,0 +1,12 @@
+[package]
+name = "medusa"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "medusa"
+path = "src/main.rs"
+
+[dependencies]
+gpui.workspace = true
