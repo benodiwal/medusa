@@ -2563,6 +2563,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipc"
+version = "0.1.0"
+
+[[package]]
 name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2883,7 +2887,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "medusa"
+name = "medusa-app"
 version = "0.1.0"
 dependencies = [
  "gpui",
@@ -4514,6 +4518,10 @@ dependencies = [
  "ryu",
  "serde",
 ]
+
+[[package]]
+name = "services"
+version = "0.1.0"
 
 [[package]]
 name = "sha1_smol"

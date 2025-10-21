@@ -1,13 +1,11 @@
 [workspace]
-members = ["crates/medusa"]
-default-members = ["crates/medusa"]
+members = ["crates/app", "crates/ipc", "crates/services"]
+default-members = ["crates/app"]
 resolver = "2"
 
-[workspace.dependencies]
-medusa = { path = "crates/medusa" }
+package.authors = ["Sachin Beniwal <sachinbeniwal0101@gmail.com>"]
 
-gpui = { git = "https://github.com/zed-industries/zed" }
-# smallvec is included here for convenience, it is used by gpui when creating
-# components that can have children. uncomment this line or
-# use `cargo add smallvec` to add it to your project
-#smallvec = "1.13.2"
+[workspace.dependencies]
+anyhow = "1.0.100"
+thiserror = "2.0.17"
+tokio = { version = "1.47.1", features = ["full"] }
