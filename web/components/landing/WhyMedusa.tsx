@@ -1,10 +1,10 @@
 const WhyMedusa = () => {
   return (
-    <section className="py-12 sm:py-16 lg:py-20 relative z-50" style={{backgroundColor: '#FBFBF4'}}>
+    <section className="py-12 sm:py-16 lg:py-20 relative z-50 px-4 sm:px-6 lg:px-10" style={{backgroundColor: '#F3F1E8'}}>
       {/* Section divider line */}
-      <div className="w-full h-0.5 mb-12 sm:mb-16 lg:mb-20" style={{backgroundColor: '#D2691E'}}></div>
+      <div className="w-full h-1 mb-12 sm:mb-16 lg:mb-20" style={{backgroundColor: '#D2691E'}}></div>
 
-      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1380px] mx-auto">
 
         {/* Title and Description Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 mb-12 sm:mb-16 lg:mb-20">
@@ -18,7 +18,7 @@ const WhyMedusa = () => {
           {/* Right - Description */}
           <div className="flex flex-col justify-center">
             <p className="text-base sm:text-lg leading-relaxed" style={{color: '#6B5B47'}}>
-              Agent orchestration shouldn't feel like juggling chaos. Medusa gives you the control,
+              Agent orchestration shouldn&apos;t feel like juggling chaos. Medusa gives you the control,
               safety, and flexibility to work with any AI coding agent while maintaining oversight
               of your development process.
             </p>

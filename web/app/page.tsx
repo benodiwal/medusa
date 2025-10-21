@@ -27,7 +27,7 @@ export default function Home() {
                 Orchestration for Coding agents
               </h1>
               <p className="text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 leading-relaxed" style={{color: '#6B5B47'}}>
-                Deploy any agent in secure containers. Execute parallel workflows, switch contexts instantly, and maintain control over AI-generated code.
+                Deploy any agent in secure containers. Execute parallel workflows, <br/> switch contexts instantly, and maintain control over AI-generated code.
               </p>
 
               {/* Email Signup Form */}
