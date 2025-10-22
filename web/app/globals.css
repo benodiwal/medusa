@@ -54,3 +54,12 @@ body {
 .animate-slideDown {
   animation: slideDown 0.8s ease-out;
 }
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}

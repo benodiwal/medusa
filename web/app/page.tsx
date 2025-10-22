@@ -10,8 +10,8 @@ export default function Home() {
       <Header />
 
       {/* ASCII Art Background - positioned from header level */}
-      <div className="fixed right-0 top-0 text-xs font-mono leading-none opacity-30 sm:opacity-50 pointer-events-none select-none z-40 hidden sm:block" style={{color: '#6B5B47'}}>
-        <div className="scale-50 sm:scale-75 origin-top-right">
+      <div className="fixed right-0 top-0 text-xs font-mono leading-none opacity-60 sm:opacity-40 lg:opacity-50 pointer-events-none select-none z-30" style={{color: '#6B5B47'}}>
+        <div className="scale-50 sm:scale-60 lg:scale-75 origin-top-right">
           <Ascii />
         </div>
       </div>
