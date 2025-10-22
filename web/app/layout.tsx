@@ -13,8 +13,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Medusa - AI Agent Orchestration",
+  title: "Medusa",
   description: "Deploy any agent in secure containers. Execute parallel workflows, switch contexts instantly, and maintain control over AI-generated code.",
+  icons: {
+    icon: [
+      { url: '/medusa-logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/medusa-logo.png', sizes: '16x16', type: 'image/png' }
+    ],
+    shortcut: '/favicon.ico',
+    apple: { url: '/medusa-logo.png', sizes: '180x180', type: 'image/png' },
+  },
 };
 
 export default function RootLayout({

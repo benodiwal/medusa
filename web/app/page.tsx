@@ -2,6 +2,7 @@ import Header from "../components/landing/Header";
 import Ascii from "../components/landing/Ascii";
 import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -48,15 +49,24 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Video Demo Section */}
+          {/* Hero Image Section with SaaS Animation */}
           <div className="pb-20">
-            <div className="relative bg-black rounded-lg overflow-hidden shadow-2xl">
-              <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                <button className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                  <svg className="w-8 h-8 text-black ml-1" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </button>
+            <div className="relative group">
+              {/* Gradient background effect */}
+              <div className="absolute -inset-1 bg-transparent rounded-lg blur-xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
+
+              {/* Main image container */}
+              <div className="relative rounded-lg overflow-hidden shadow-2xl transform transition-all duration-700 hover:scale-[1.02]">
+                <div className="relative aspect-video w-full">
+                  <Image
+                    src="/hero.png"
+                    alt="Medusa Platform Demo"
+                    fill
+                    className="object-cover animate-fadeIn"
+                    priority
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+                  />
+                </div>
               </div>
             </div>
           </div>
