@@ -1,3 +1,7 @@
+'use client'
+
+import WaitlistForm from '../WaitlistForm'
+
 const Footer = () => {
   return (
     <footer className="relative py-12 sm:py-16 lg:py-20" style={{backgroundColor: '#FBFBF4'}}>
@@ -14,20 +18,12 @@ const Footer = () => {
           </p>
 
           {/* Email Signup Form */}
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="YOUR EMAIL"
-              className="flex-1 px-4 sm:px-5 py-3 border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{color: '#6B5B47'}}
-            />
-            <button
-              className="px-6 sm:px-8 py-3 text-white text-sm font-medium rounded-md transition-colors hover:opacity-90 cursor-pointer whitespace-nowrap"
-              style={{backgroundColor: '#6B5B47'}}
-            >
-              REQUEST ACCESS
-            </button>
-          </div>
+          <WaitlistForm
+            layout="horizontal"
+            buttonText="REQUEST ACCESS"
+            placeholder="YOUR EMAIL"
+            className="max-w-md mx-auto"
+          />
         </div>
 
         {/* Bottom Links and Copyright */}

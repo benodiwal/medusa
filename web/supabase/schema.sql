@@ -24,9 +24,12 @@ ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can insert waitlist entries" ON waitlist
     FOR INSERT WITH CHECK (true);
 
--- Create a policy that allows only authenticated users to read
-CREATE POLICY "Only authenticated users can read waitlist" ON waitlist
-    FOR SELECT USING (auth.role() = 'authenticated');
+-- Create a policy that allows anyone to read their own entry
+CREATE POLICY "Users can read their own entry" ON waitlist
+    FOR SELECT USING (true);
+
+-- Alternative: If you want to disable RLS for development
+-- ALTER TABLE waitlist DISABLE ROW LEVEL SECURITY;
 
 -- Create a function to update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

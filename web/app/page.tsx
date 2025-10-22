@@ -3,6 +3,7 @@ import Ascii from "../components/landing/Ascii";
 import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
 import Image from "next/image";
+import WaitlistForm from "../components/WaitlistForm";
 
 export default function Home() {
   return (
@@ -34,17 +35,12 @@ export default function Home() {
               {/* Email Signup Form */}
               <div className="mb-8 sm:mb-12 px-1 sm:pl-1">
                 <p className="text-sm mb-4" style={{color: '#6B5B47'}}>Available soon. Be first to get access.</p>
-                <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-0">
-                  <input
-                    type="email"
-                    placeholder="YOUR EMAIL"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
-                    style={{color: '#6B5B47'}}
-                  />
-                  <button className="px-6 py-3 text-white text-sm font-medium rounded-md transition-colors hover:opacity-90 cursor-pointer whitespace-nowrap" style={{backgroundColor: '#6B5B47'}}>
-                    REQUEST ACCESS
-                  </button>
-                </div>
+                <WaitlistForm
+                  layout="horizontal"
+                  buttonText="REQUEST ACCESS"
+                  placeholder="YOUR EMAIL"
+                  className="max-w-md"
+                />
               </div>
             </div>
           </div>

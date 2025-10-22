@@ -2,16 +2,17 @@
 
 import { useState } from 'react'
 import { BiX } from 'react-icons/bi'
-// import { WaitlistService } from '../lib/waitlist'
+import { WaitlistService } from '../lib/waitlist'
 
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
   title: string
   submitText: string
 }
 
-const Modal = ({ isOpen, onClose, title, submitText }: ModalProps) => {
+const Modal = ({ isOpen, onClose, onSuccess, title, submitText }: ModalProps) => {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -23,19 +24,21 @@ const Modal = ({ isOpen, onClose, title, submitText }: ModalProps) => {
     setError('')
 
     try {
-      // const result = await WaitlistService.addToWaitlist({
-      //   name: name.trim(),
-      //   email: email.trim(),
-      //   type: 'download' // Since this modal is only for downloads now
-      // })
-      const result = { success: true, error: "" } // --- IGNORE ---
+      const result = await WaitlistService.addToWaitlist({
+        name: name.trim(),
+        email: email.trim(),
+        type: 'download' // Since this modal is only for downloads now
+      })
 
       if (result.success) {
         setName('')
         setEmail('')
         setIsSubmitting(false)
-        onClose()
-        alert('Thank you! We\'ll be in touch soon with download details.')
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          onClose()
+        }
       } else {
         setError(result.error || 'Something went wrong. Please try again.')
         setIsSubmitting(false)
@@ -73,8 +76,14 @@ const Modal = ({ isOpen, onClose, title, submitText }: ModalProps) => {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
+            <div
+              className="mb-4 p-3 rounded-md"
+              style={{
+                backgroundColor: '#F3F1E8',
+                border: '1px solid #D2691E40'
+              }}
+            >
+              <p className="text-sm" style={{ color: '#6B5B47', fontWeight: 500 }}>{error}</p>
             </div>
           )}
 

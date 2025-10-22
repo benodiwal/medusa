@@ -1,4 +1,7 @@
+'use client'
+
 import Image from 'next/image'
+import DownloadButton from '../DownloadButton'
 
 const WhyMedusa = () => {
   return (
@@ -23,7 +26,7 @@ const WhyMedusa = () => {
               Agent orchestration shouldn&apos;t feel like juggling chaos. Medusa gives you the control,
               safety, and flexibility to work with any AI coding agent while maintaining oversight
               of your development process.
-          </p>
+            </p>
           </div>
         </div>
 
@@ -106,6 +109,11 @@ const WhyMedusa = () => {
             </p>
           </div>
 
+        </div>
+
+        {/* Download Button - Centered at Bottom */}
+        <div className="flex justify-center mt-12 sm:mt-16 lg:mt-20">
+          <DownloadButton />
         </div>
 
       </div>
