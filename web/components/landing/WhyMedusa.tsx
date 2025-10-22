@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 const WhyMedusa = () => {
   return (
-    <section className="py-12 sm:py-16 lg:py-20 relative z-10 px-4 sm:px-6 lg:px-10" style={{backgroundColor: '#F3F1E8'}}>
+    <section className="py-12 sm:py-16 lg:py-20 relative z-50 px-4 sm:px-6 lg:px-10" style={{backgroundColor: '#F3F1E8'}}>
       {/* Section divider line */}
       <div className="w-full h-1 mb-12 sm:mb-16 lg:mb-20" style={{backgroundColor: '#D2691E'}}></div>
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { BiX } from 'react-icons/bi'
+// import { WaitlistService } from '../lib/waitlist'
 
 interface ModalProps {
   isOpen: boolean
@@ -14,19 +15,35 @@ const Modal = ({ isOpen, onClose, title, submitText }: ModalProps) => {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError('')
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      // const result = await WaitlistService.addToWaitlist({
+      //   name: name.trim(),
+      //   email: email.trim(),
+      //   type: 'download' // Since this modal is only for downloads now
+      // })
+      const result = { success: true, error: "" } // --- IGNORE ---
 
-    setName('')
-    setEmail('')
-    setIsSubmitting(false)
-    onClose()
-
-    alert('Thank you! We\'ll be in touch soon.')
+      if (result.success) {
+        setName('')
+        setEmail('')
+        setIsSubmitting(false)
+        onClose()
+        alert('Thank you! We\'ll be in touch soon with download details.')
+      } else {
+        setError(result.error || 'Something went wrong. Please try again.')
+        setIsSubmitting(false)
+      }
+    } catch (error) {
+      setError('Something went wrong. Please try again.')
+      setIsSubmitting(false)
+    }
   }
 
   if (!isOpen) return null
@@ -53,6 +70,13 @@ const Modal = ({ isOpen, onClose, title, submitText }: ModalProps) => {
           <p className="text-gray-600 mb-6">
             Get early access to Medusa and be among the first to experience AI agent orchestration.
           </p>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
           {/* Name Input */}
           <div className="mb-4">
