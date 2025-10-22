@@ -47,7 +47,7 @@ const WhyMedusa = () => {
               Agent-agnostic by design
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Claude Code, Cursor, Devin, or your custom agent—Medusa works with them all.
+              Claude Code, Codex, or your custom agent—Medusa works with them all.
               No vendor lock-in, no switching costs.
             </p>
           </div>
