@@ -42,7 +42,7 @@ const DownloadButton = ({ variant = 'default', className = '' }: DownloadButtonP
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleDownloadSuccess}
         title="Download Medusa"
-        submitText="Download"
+        submitText="Join Waitlist"
       />
       <button
         onClick={() => setIsModalOpen(true)}
