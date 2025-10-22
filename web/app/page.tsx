@@ -32,9 +32,9 @@ export default function Home() {
               </p>
 
               {/* Email Signup Form */}
-              <div className="mb-8 sm:mb-12 pl-0 sm:pl-1">
+              <div className="mb-8 sm:mb-12 px-1 sm:pl-1">
                 <p className="text-sm mb-4" style={{color: '#6B5B47'}}>Available soon. Be first to get access.</p>
-                <div className="flex flex-col sm:flex-row gap-3 max-w-md">
+                <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-0">
                   <input
                     type="email"
                     placeholder="YOUR EMAIL"
