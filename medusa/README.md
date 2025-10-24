@@ -1,12 +1,7 @@
-# medusa
+# Tauri + React + Typescript
 
-Created with Create GPUI App.
+This template should help get you started developing with Tauri, React and Typescript in Vite.
 
-- [`gpui`](https://www.gpui.rs/)
-- [GPUI documentation](https://github.com/zed-industries/zed/tree/main/crates/gpui/docs)
-- [GPUI examples](https://github.com/zed-industries/zed/tree/main/crates/gpui/examples)
+## Recommended IDE Setup
 
-## Usage
-
-- Ensure Rust is installed - [Rustup](https://rustup.rs/)
-- Run your app with `cargo run`
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
