@@ -1,4 +1,12 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+pub mod docker;
+pub mod agent;
+pub mod git;
+pub mod state;
+pub mod commands;
+
+pub use state::AppState;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
