@@ -11,6 +11,7 @@ pub mod logging;
 pub use state::AppState;
 
 use db::{config::DatabaseConfig, migrations};
+use tauri::Manager;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -19,7 +20,6 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize logging first
     logging::init_logging();
 
     tracing::info!("Starting Medusa application");
@@ -28,6 +28,11 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::new().add_migrations(&DatabaseConfig::default().url, migrations::all()).build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![greet])
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+            window.maximize().unwrap();
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

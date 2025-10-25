@@ -8,12 +8,7 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging
-    medusa_lib::logging::init_logging();
-
-    log_info!("Starting Medusa system tests");
-
-    // medusa_lib::run();
+    medusa_lib::run();
     Ok(())
 }
 
