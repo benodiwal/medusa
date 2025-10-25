@@ -1,16 +1,29 @@
 use std::sync::Arc;
 
-use crate::agent::AgentManager;
+use crate::agent::AgentOrchestrator;
+use crate::docker::ContainerManager;
+use crate::workspace::WorkspaceManager;
 use anyhow::Result;
 
 pub struct AppState {
-    pub agent_manager: Arc<AgentManager>,
+    pub workspace_manager: Arc<WorkspaceManager>,
+    pub container_manager: Arc<ContainerManager>,
+    pub agent_orchestrator: Arc<AgentOrchestrator>,
 }
 
 impl AppState {
-    pub fn new(repo_path: String) -> Result<Self> {
+    pub fn new() -> Result<Self> {
+        let workspace_manager = Arc::new(WorkspaceManager::new());
+        let container_manager = Arc::new(ContainerManager::new()?);
+        let agent_orchestrator = Arc::new(AgentOrchestrator::new(
+            container_manager.clone(),
+            workspace_manager.clone(),
+        ));
+
         Ok(Self {
-            agent_manager: Arc::new(AgentManager::new(repo_path)?),
+            workspace_manager,
+            container_manager,
+            agent_orchestrator,
         })
     }
 }

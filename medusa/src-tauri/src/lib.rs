@@ -1,10 +1,12 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+pub mod workspace;
 pub mod agent;
 pub mod commands;
 pub mod docker;
 pub mod git;
 pub mod db; // SQLite
 pub mod state;
+pub mod logging;
 
 pub use state::AppState;
 
@@ -17,6 +19,11 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logging first
+    logging::init_logging();
+
+    tracing::info!("Starting Medusa application");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().add_migrations(&DatabaseConfig::default().url, migrations::all()).build())
         .plugin(tauri_plugin_opener::init())

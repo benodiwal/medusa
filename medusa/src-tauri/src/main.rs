@@ -2,62 +2,34 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use medusa_lib::agent::types::AgentConfig;
+use medusa_lib::{log_info, log_error, log_warn};
 use std::time::Duration;
 use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // println!("🚀 Starting Medusa system tests...\n");
+    // Initialize logging
+    medusa_lib::logging::init_logging();
 
-    // let repo_path = "/Users/sachin/personal/churnguard".to_string();
+    log_info!("Starting Medusa system tests");
 
-    // // Test 1: AppState initialization
-    // println!("📋 Test 1: Initializing AppState...");
-    // let app_state = match medusa_lib::AppState::new(repo_path.clone()) {
-    //     Ok(state) => {
-    //         println!("✅ AppState initialized successfully");
-    //         state
-    //     }
-    //     Err(e) => {
-    //         println!("❌ Failed to initialize AppState: {}", e);
-    //         return Err(e.into());
-    //     }
-    // };
-
-    // // Test 2: Git Manager functionality
-    // println!("\n📋 Test 2: Testing Git Manager...");
-    // test_git_manager(&app_state).await?;
-
-    // // Test 3: Container Manager functionality
-    // println!("\n📋 Test 3: Testing Container Manager...");
-    // test_container_manager(&app_state).await?;
-
-    // // Test 4: Agent Manager functionality
-    // println!("\n📋 Test 4: Testing Agent Manager...");
-    // test_agent_manager(&app_state).await?;
-
-    // println!("\n🎉 All tests completed successfully!");
-    // println!("✨ Medusa system is ready for use");
-
-    // Ok(())
-
-    medusa_lib::run();
+    // medusa_lib::run();
     Ok(())
 }
 
 async fn test_git_manager(
     _app_state: &medusa_lib::AppState,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Since GitManager fields are private, we'll test through public AgentManager methods
+    // Since GitManager fields are private, we'll test through a direct GitManager instance
     // For now, let's create a separate GitManager for testing
     use medusa_lib::git::GitManager;
     let git_manager = GitManager::new("/Users/sachin/personal/churnguard".to_string())?;
 
     // Test current branch
     match git_manager.current_branch() {
-        Ok(branch) => println!("  ✅ Current branch: {}", branch),
+        Ok(branch) => log_info!("Current branch: {}", branch),
         Err(e) => {
-            println!("  ❌ Failed to get current branch: {}", e);
+            log_error!("Failed to get current branch: {}", e);
             return Err(e.into());
         }
     }
@@ -65,28 +37,28 @@ async fn test_git_manager(
     // Test branch creation
     let test_branch = "test-medusa-branch";
     match git_manager.create_branch(test_branch) {
-        Ok(_) => println!("  ✅ Created test branch: {}", test_branch),
+        Ok(_) => log_info!("Created test branch: {}", test_branch),
         Err(e) => {
-            println!("  ⚠️  Branch creation failed (may already exist): {}", e);
+            log_warn!("  Branch creation failed (may already exist): {}", e);
         }
     }
 
     // Test checkout
     match git_manager.checkout(test_branch) {
         Ok(_) => {
-            println!("  ✅ Checked out to test branch");
+            log_info!(" Checked out to test branch");
             // Switch back to main
             let _ = git_manager.checkout("main");
         }
         Err(e) => {
-            println!("  ⚠️  Branch checkout failed: {}", e);
+            log_warn!("  Branch checkout failed: {}", e);
         }
     }
 
     // Cleanup: delete test branch
     match git_manager.delete_branch(test_branch) {
-        Ok(_) => println!("  ✅ Cleaned up test branch"),
-        Err(e) => println!("  ⚠️  Failed to cleanup test branch: {}", e),
+        Ok(_) => log_info!(" Cleaned up test branch"),
+        Err(e) => log_warn!("  Failed to cleanup test branch: {}", e),
     }
 
     Ok(())
@@ -120,18 +92,18 @@ async fn test_container_manager(
 
             // Test container status
             match container_manager.container_status(&container_id).await {
-                Ok(status) => println!("  ✅ Container status: {}", status),
-                Err(e) => println!("  ⚠️  Failed to get container status: {}", e),
+                Ok(status) => log_info!(" Container status: {}", status),
+                Err(e) => log_warn!("  Failed to get container status: {}", e),
             }
 
             // Cleanup: stop and remove container
             let _ = container_manager.stop_container(&container_id).await;
             let _ = container_manager.remove_container(&container_id).await;
-            println!("  ✅ Test container cleaned up");
+            log_info!(" Test container cleaned up");
         }
         Err(e) => {
-            println!("  ⚠️  Docker test failed (may need Docker image): {}", e);
-            println!("  💡 Note: This is expected if 'medusa-agent:latest' image doesn't exist");
+            log_warn!("  Docker test failed (may need Docker image): {}", e);
+            log_info!(" Note: This is expected if 'medusa-agent:latest' image doesn't exist");
         }
     }
 
@@ -141,10 +113,25 @@ async fn test_container_manager(
 async fn test_agent_manager(
     app_state: &medusa_lib::AppState,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let agent_manager = &app_state.agent_manager;
+    let agent_orchestrator = &app_state.agent_orchestrator;
+    let workspace_manager = &app_state.workspace_manager;
+
+    // First create a workspace
+    log_info!(" Creating test workspace...");
+    let workspace_id = workspace_manager
+        .create_workspace(
+            "test-workspace".to_string(),
+            std::path::PathBuf::from("/Users/sachin/personal/churnguard"),
+        )
+        .await?;
+    log_info!(" Workspace created: {}", workspace_id.0);
+
+    // Set it as active
+    workspace_manager.set_active_workspace(workspace_id.clone()).await?;
+    log_info!(" Workspace set as active");
 
     // Test agent creation
-    println!("  🤖 Testing agent creation...");
+    log_info!(" Testing agent creation...");
 
     let config = AgentConfig {
         model: "test-model".to_string(),
@@ -152,39 +139,39 @@ async fn test_agent_manager(
         task_description: "Test task for system validation".to_string(),
     };
 
-    let agent_result = agent_manager.create_agent(config).await;
+    let agent_result = agent_orchestrator.create_agent(config).await;
 
     match agent_result {
         Ok(agent_id) => {
-            println!("  ✅ Agent created successfully: {}", agent_id.0);
+            log_info!(" Agent created successfully: {}", agent_id.0);
 
             // Test agent retrieval
-            if let Some(agent) = agent_manager.get_agent(&agent_id.0).await {
+            if let Some(agent) = agent_orchestrator.get_agent(&agent_id.0).await {
                 println!(
                     "  ✅ Agent retrieved: {} (status: {:?})",
                     agent.id.0, agent.status
                 );
             } else {
-                println!("  ❌ Failed to retrieve created agent");
+                log_error!(" Failed to retrieve created agent");
             }
 
             // Test agent listing
-            let agents = agent_manager.list_agents().await;
-            println!("  ✅ Found {} agents in system", agents.len());
+            let agents = agent_orchestrator.list_agents().await?;
+            log_info!(" Found {} agents in system", agents.len());
 
             // Wait a moment to let container start
             sleep(Duration::from_secs(2)).await;
 
             // Test agent stopping
-            match agent_manager.stop_agent(&agent_id.0).await {
-                Ok(_) => println!("  ✅ Agent stopped successfully"),
-                Err(e) => println!("  ⚠️  Failed to stop agent: {}", e),
+            match agent_orchestrator.stop_agent(&agent_id.0).await {
+                Ok(_) => log_info!(" Agent stopped successfully"),
+                Err(e) => log_warn!("  Failed to stop agent: {}", e),
             }
 
             // Cleanup agent
-            match agent_manager.cleanup_agent(&agent_id.0).await {
-                Ok(_) => println!("  ✅ Agent cleaned up successfully"),
-                Err(e) => println!("  ⚠️  Failed to cleanup agent: {}", e),
+            match agent_orchestrator.cleanup_agent(&agent_id.0).await {
+                Ok(_) => log_info!(" Agent cleaned up successfully"),
+                Err(e) => log_warn!("  Failed to cleanup agent: {}", e),
             }
         }
         Err(e) => {
@@ -192,7 +179,7 @@ async fn test_agent_manager(
                 "  ⚠️  Agent creation failed (expected without Docker image): {}",
                 e
             );
-            println!("  💡 Note: This is expected if Docker/containers aren't available");
+            log_info!(" Note: This is expected if Docker/containers aren't available");
         }
     }
 

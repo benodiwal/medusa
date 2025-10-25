@@ -14,6 +14,7 @@ impl AgentId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Agent {
     pub id: AgentId,
+    pub name: String,  // Cute generated name like "clever-panda"
     pub branch_name: String,
     pub container_id: String,
     pub task: String,
