@@ -7,42 +7,47 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Starting Medusa system tests...\n");
+    // println!("🚀 Starting Medusa system tests...\n");
 
-    let repo_path = "/Users/sachin/personal/churnguard".to_string();
+    // let repo_path = "/Users/sachin/personal/churnguard".to_string();
 
-    // Test 1: AppState initialization
-    println!("📋 Test 1: Initializing AppState...");
-    let app_state = match medusa_lib::AppState::new(repo_path.clone()) {
-        Ok(state) => {
-            println!("✅ AppState initialized successfully");
-            state
-        }
-        Err(e) => {
-            println!("❌ Failed to initialize AppState: {}", e);
-            return Err(e.into());
-        }
-    };
+    // // Test 1: AppState initialization
+    // println!("📋 Test 1: Initializing AppState...");
+    // let app_state = match medusa_lib::AppState::new(repo_path.clone()) {
+    //     Ok(state) => {
+    //         println!("✅ AppState initialized successfully");
+    //         state
+    //     }
+    //     Err(e) => {
+    //         println!("❌ Failed to initialize AppState: {}", e);
+    //         return Err(e.into());
+    //     }
+    // };
 
-    // Test 2: Git Manager functionality
-    println!("\n📋 Test 2: Testing Git Manager...");
-    test_git_manager(&app_state).await?;
+    // // Test 2: Git Manager functionality
+    // println!("\n📋 Test 2: Testing Git Manager...");
+    // test_git_manager(&app_state).await?;
 
-    // Test 3: Container Manager functionality
-    println!("\n📋 Test 3: Testing Container Manager...");
-    test_container_manager(&app_state).await?;
+    // // Test 3: Container Manager functionality
+    // println!("\n📋 Test 3: Testing Container Manager...");
+    // test_container_manager(&app_state).await?;
 
-    // Test 4: Agent Manager functionality
-    println!("\n📋 Test 4: Testing Agent Manager...");
-    test_agent_manager(&app_state).await?;
+    // // Test 4: Agent Manager functionality
+    // println!("\n📋 Test 4: Testing Agent Manager...");
+    // test_agent_manager(&app_state).await?;
 
-    println!("\n🎉 All tests completed successfully!");
-    println!("✨ Medusa system is ready for use");
+    // println!("\n🎉 All tests completed successfully!");
+    // println!("✨ Medusa system is ready for use");
 
+    // Ok(())
+
+    medusa_lib::run();
     Ok(())
 }
 
-async fn test_git_manager(_app_state: &medusa_lib::AppState) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_git_manager(
+    _app_state: &medusa_lib::AppState,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Since GitManager fields are private, we'll test through public AgentManager methods
     // For now, let's create a separate GitManager for testing
     use medusa_lib::git::GitManager;
@@ -87,7 +92,9 @@ async fn test_git_manager(_app_state: &medusa_lib::AppState) -> Result<(), Box<d
     Ok(())
 }
 
-async fn test_container_manager(_app_state: &medusa_lib::AppState) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_container_manager(
+    _app_state: &medusa_lib::AppState,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Since ContainerManager fields are private, we'll create a separate one for testing
     use medusa_lib::docker::ContainerManager;
     let container_manager = ContainerManager::new()?;
@@ -100,13 +107,16 @@ async fn test_container_manager(_app_state: &medusa_lib::AppState) -> Result<(),
         .create_agent_container(
             "test-agent",
             "test-branch",
-            "/tmp"  // Use a safe test path
+            "/tmp", // Use a safe test path
         )
         .await;
 
     match test_container_result {
         Ok(container_id) => {
-            println!("  ✅ Docker connection successful, container created: {}", container_id);
+            println!(
+                "  ✅ Docker connection successful, container created: {}",
+                container_id
+            );
 
             // Test container status
             match container_manager.container_status(&container_id).await {
@@ -128,7 +138,9 @@ async fn test_container_manager(_app_state: &medusa_lib::AppState) -> Result<(),
     Ok(())
 }
 
-async fn test_agent_manager(app_state: &medusa_lib::AppState) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_agent_manager(
+    app_state: &medusa_lib::AppState,
+) -> Result<(), Box<dyn std::error::Error>> {
     let agent_manager = &app_state.agent_manager;
 
     // Test agent creation
@@ -148,7 +160,10 @@ async fn test_agent_manager(app_state: &medusa_lib::AppState) -> Result<(), Box<
 
             // Test agent retrieval
             if let Some(agent) = agent_manager.get_agent(&agent_id.0).await {
-                println!("  ✅ Agent retrieved: {} (status: {:?})", agent.id.0, agent.status);
+                println!(
+                    "  ✅ Agent retrieved: {} (status: {:?})",
+                    agent.id.0, agent.status
+                );
             } else {
                 println!("  ❌ Failed to retrieve created agent");
             }
@@ -173,7 +188,10 @@ async fn test_agent_manager(app_state: &medusa_lib::AppState) -> Result<(), Box<
             }
         }
         Err(e) => {
-            println!("  ⚠️  Agent creation failed (expected without Docker image): {}", e);
+            println!(
+                "  ⚠️  Agent creation failed (expected without Docker image): {}",
+                e
+            );
             println!("  💡 Note: This is expected if Docker/containers aren't available");
         }
     }

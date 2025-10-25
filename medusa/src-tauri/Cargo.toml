@@ -29,4 +29,6 @@ bollard = "0.19.3"
 futures-util = "0.3.31"
 git2 = "0.20.2"
 tokio = { version = "1.48.0", features = ["full"] }
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate"] }
 

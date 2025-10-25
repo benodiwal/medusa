@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{Utc, DateTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentId(pub String);

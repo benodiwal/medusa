@@ -10,7 +10,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(repo_path: String) -> Result<Self> {
         Ok(Self {
-            agent_manager: Arc::new(AgentManager::new(repo_path)?)
+            agent_manager: Arc::new(AgentManager::new(repo_path)?),
         })
     }
 }

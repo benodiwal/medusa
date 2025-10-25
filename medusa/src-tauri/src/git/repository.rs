@@ -75,6 +75,4 @@ impl GitManager {
         branch.delete()?;
         Ok(())
     }
-
-    
 }
