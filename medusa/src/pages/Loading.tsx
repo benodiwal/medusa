@@ -1,42 +1,27 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Ascii from '../components/Ascii';
+import { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import TypingAnimation from '../components/TypingAnimation';
 
 const Loading = () => {
-  const [showLogo, setShowLogo] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Show logo after ASCII animation completes (assuming it takes about 8 seconds)
-    const timer = setTimeout(() => {
-      setShowLogo(true);
-    }, 2000);
+    const redirectTimer = setTimeout(() => {
+      navigate('/app');
+    }, 6000);
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      clearTimeout(redirectTimer);
+    };
+  }, [navigate]);
 
   return (
     <div
       className="fixed inset-0 flex items-center justify-center w-screen h-screen m-0 p-0"
       style={{ backgroundColor: '#FBFBF4' }}
     >
-      <AnimatePresence mode="wait">
-        {!showLogo ? (
-          <motion.div
-            key="ascii"
-            initial={{ opacity: 1 }}
-            exit={{
-              opacity: 0,
-              scale: 0.8,
-              rotateY: 90,
-              transition: { duration: 1.2, ease: "easeInOut" }
-            }}
-            className="flex flex-col items-center justify-center"
-          >
-            <Ascii />
-          </motion.div>
-        ) : (
-          <motion.div
+        <motion.div
             key="logo"
             initial={{
               opacity: 0,
@@ -153,12 +138,10 @@ const Loading = () => {
                 showCursor={true}
                 delay={1000}
                 className="font-bold tracking-wider"
-                style={{ color: '#6B5B47', fontSize: '5rem' }}
+                style={{ color: '#6B5B47', fontSize: '1.5rem' }}
               />
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
