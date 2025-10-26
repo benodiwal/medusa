@@ -80,7 +80,6 @@ export const ChatInterface = () => {
                       side="top"
                       className="w-56 bg-card border-border"
                     >
-                      <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Model</div>
                       <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
                         <span className="w-4 h-4 mr-2"></span>
                         Claude 4.1 Opus
