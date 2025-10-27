@@ -9,10 +9,12 @@ import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settin
 import { useNavigate, useLocation } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 import { CreateNewAgentModal } from "./CreateNewAgentModal";
+import { SearchAgentsModal } from "./SearchAgentsModal";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,6 +29,11 @@ export const ChatSidebar = () => {
         } else {
           setIsModalOpen(true);
         }
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        setIsSearchOpen(true);
       }
     };
 
@@ -111,17 +118,19 @@ export const ChatSidebar = () => {
             <div className="flex items-center">
                 {
                   !isCollapsed && (
-                  <TooltipButton
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {}}
-                  className="text-muted-foreground hover:bg-secondary"
-                  tooltip={"Search for agents ⌘ K"}
-                  tooltipSide="bottom"
-                  >
-                    <Search className="w-4 h-4"/>
+                  <SearchAgentsModal open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                    <TooltipButton
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="text-muted-foreground hover:bg-secondary"
+                    tooltip={"Search for agents ⌘ K"}
+                    tooltipSide="bottom"
+                    >
+                      <Search className="w-4 h-4"/>
                     </TooltipButton>
-                  )   
+                  </SearchAgentsModal>
+                  )
                 }
                 {
                     !isCollapsed && (
