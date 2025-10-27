@@ -18,7 +18,7 @@ export const ChatSidebar = () => {
       <aside
         className={`relative h-screen transition-all duration-300 ${
           isCollapsed
-            ? "w-16 bg-sidebar-background"
+            ? "w-16 bg-background"
             : "w-78 bg-card border-r border-border"
         }`}
       >

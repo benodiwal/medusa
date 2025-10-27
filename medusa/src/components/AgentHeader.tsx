@@ -1,4 +1,4 @@
-import { MoreHorizontal, ChevronDown, GitMerge, Users, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { MoreHorizontal, ChevronDown, GitMerge, Users, PanelRightOpen, PanelRightClose, Copy, ArchiveIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -14,9 +14,31 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium">Hi</span>
         <span className="text-sm text-muted-foreground">sculptor/vengeful-straight-peccary</span>
-        <Button variant="ghost" size="icon" className="h-6 w-6">
-          <MoreHorizontal className="w-4 h-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="cursor-pointer h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-secondary transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            side="bottom"
+            className="w-56 bg-card border-border"
+          >
+            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+              <Copy className="w-4 h-4 mr-2" />
+              Copy Branch Name
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+              <ArchiveIcon className="w-4 h-4 mr-2" />
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer text-red-400 hover:bg-muted hover:text-red-400 focus:bg-muted focus:text-red-400">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Right side */}
