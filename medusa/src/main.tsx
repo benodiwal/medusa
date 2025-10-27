@@ -5,6 +5,7 @@ import "./index.css";
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import App from "./pages/App";
 import Agent from "./pages/Agent";
+import Settings from "./pages/Settings";
 import { Layout } from "./components/Layout";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -20,6 +21,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <Route path="/agent" element={
           <Layout>
             <Agent />
+          </Layout>
+        } />
+        <Route path="/settings" element={
+          <Layout>
+            <Settings />
           </Layout>
         } />
       </Routes>

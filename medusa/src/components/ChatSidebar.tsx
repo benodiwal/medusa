@@ -253,7 +253,7 @@ export const ChatSidebar = () => {
                     <TooltipButton
                   variant="ghost"
                   size="icon"
-                  onClick={() => {}}
+                  onClick={() => navigate("/settings")}
                   className="text-muted-foreground hover:bg-secondary"
                   tooltip={"Settings"}
                   tooltipSide="top"
