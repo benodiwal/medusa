@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
-import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settings, Sidebar } from "lucide-react";
+import { ArchiveIcon, Check, ChevronDown, Copy, HelpCircle, Home, MessageSquare, MoreHorizontal, Plus, Search, Settings, Sidebar, ArrowUpDown, Trash2, ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 import { CreateNewAgentModal } from "./CreateNewAgentModal";
@@ -13,33 +13,56 @@ import { SearchAgentsModal } from "./SearchAgentsModal";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const isHomePage = location.pathname === "/" || location.pathname === "/app";
+  // Mock data - replace with real data later
+  const activeAgents = [
+    {
+      id: "1",
+      name: "Hi",
+      lastMessage: "21 hrs ago • sculptor/vengefu...",
+      isActive: true
+    }
+  ];
 
+  const archivedAgents = [
+    {
+      id: "2",
+      name: "Archived Agent",
+      lastMessage: "1 week ago • sculptor/test...",
+      isActive: false
+    }
+  ];
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
         event.preventDefault();
-        if (isHomePage) {
-          navigate('/app');
-        } else {
-          setIsModalOpen(true);
-        }
+        setCreateModalOpen(true);
       }
-
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
-        setIsSearchOpen(true);
+        setSearchModalOpen(true);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isHomePage, navigate]);
+  }, []);
+
+  const handleArchiveAgent = (agentId: string) => {
+    console.log("Archive agent:", agentId);
+    // TODO: Implement archive functionality
+  };
+
+  const handleDeleteAgent = (agentId: string) => {
+    console.log("Delete agent:", agentId);
+    // TODO: Implement delete functionality
+  };
 
   return (
     <TooltipProvider>
@@ -118,18 +141,16 @@ export const ChatSidebar = () => {
             <div className="flex items-center">
                 {
                   !isCollapsed && (
-                  <SearchAgentsModal open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                    <TooltipButton
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsSearchOpen(true)}
-                    className="text-muted-foreground hover:bg-secondary"
-                    tooltip={"Search for agents ⌘ K"}
-                    tooltipSide="bottom"
-                    >
-                      <Search className="w-4 h-4"/>
+                  <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchModalOpen(true)}
+                  className="text-muted-foreground hover:bg-secondary"
+                  tooltip={"Search for agents ⌘ K"}
+                  tooltipSide="bottom"
+                  >
+                    <Search className="w-4 h-4"/>
                     </TooltipButton>
-                  </SearchAgentsModal>
                   )
                 }
                 {
@@ -162,32 +183,17 @@ export const ChatSidebar = () => {
         {/* New Chat Button */}
         {!isCollapsed && (
           <div className="p-1">
-            {isHomePage ? (
-              <Button
-                onClick={() => navigate('/app')}
-                className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center">
-                    <Plus className="mr-[10px]"/>
-                    New Agent
-                  </div>
-                  <div>⌘ N</div>
-                </div>
-              </Button>
-            ) : (
-              <CreateNewAgentModal open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <Button className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center">
-                      <Plus className="mr-[10px]"/>
-                      New Agent
-                    </div>
-                    <div>⌘ N</div>
-                  </div>
-                </Button>
-              </CreateNewAgentModal>
-            )}
+            <Button
+              onClick={() => setCreateModalOpen(true)}
+              className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border">
+            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center">
+              <Plus className="mr-[10px]"/>
+              New Agent
+              </div>
+              <div>⌘ N</div>
+            </div>
+            </Button>
           </div>
         )}
 
@@ -196,27 +202,50 @@ export const ChatSidebar = () => {
           <div className="p-2">
             {!isCollapsed && (
               <div className="space-y-1">
-                <ConversationItem
-                  title="Hi"
-                  subtitle="21 hrs ago • sculptor/vengefu..."
-                  isActive={true}
-                  onClick={() => navigate('/agent')}
-                  onPairMode={() => console.log('Start pairing mode')}
-                  onCopyBranch={() => console.log('Copy branch name')}
-                  onArchive={() => console.log('Archive conversation')}
-                  onDelete={() => console.log('Delete conversation')}
-                />
+                {showArchived && (
+                  <div className="mb-4">
+                    <Button
+                      onClick={() => setShowArchived(false)}
+                      variant="ghost"
+                      className="w-full justify-start text-left h-auto p-3 bg-muted/50 hover:bg-muted"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to active agents
+                    </Button>
+                  </div>
+                )}
 
-                <ConversationItem
-                  title="Hi"
-                  subtitle="21 hrs ago • sculptor/vengefu..."
-                  isActive={false}
-                  onClick={() => navigate('/agent')}
-                  onPairMode={() => console.log('Start pairing mode')}
-                  onCopyBranch={() => console.log('Copy branch name')}
-                  onArchive={() => console.log('Archive conversation')}
-                  onDelete={() => console.log('Delete conversation')}
-                />
+                {showArchived ? (
+                  archivedAgents.length > 0 ? (
+                    archivedAgents.map((agent) => (
+                      <ConversationItem
+                        key={agent.id}
+                        title={agent.name}
+                        subtitle={agent.lastMessage}
+                        isActive={agent.isActive}
+                        onArchive={() => handleArchiveAgent(agent.id)}
+                        onDelete={() => handleDeleteAgent(agent.id)}
+                        onClick={() => navigate('/agent')}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No archived agents yet...
+                    </div>
+                  )
+                ) : (
+                  activeAgents.map((agent) => (
+                    <ConversationItem
+                      key={agent.id}
+                      title={agent.name}
+                      subtitle={agent.lastMessage}
+                      isActive={agent.isActive}
+                      onArchive={() => handleArchiveAgent(agent.id)}
+                      onDelete={() => handleDeleteAgent(agent.id)}
+                      onClick={() => navigate('/agent')}
+                    />
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -230,7 +259,7 @@ export const ChatSidebar = () => {
                 <TooltipButton
                   variant="ghost"
                   size="icon"
-                  onClick={() => {}}
+                  onClick={() => setShowArchived(true)}
                   className="text-muted-foreground hover:bg-secondary"
                   tooltip={"Show Archive Agents"}
                   tooltipSide="top"
@@ -289,6 +318,21 @@ export const ChatSidebar = () => {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      <CreateNewAgentModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+      >
+        <div />
+      </CreateNewAgentModal>
+
+      <SearchAgentsModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+      >
+        <div />
+      </SearchAgentsModal>
     </aside>
     </TooltipProvider>
   );
