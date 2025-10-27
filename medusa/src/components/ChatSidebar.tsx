@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,12 +6,33 @@ import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settings, Sidebar } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
+import { CreateNewAgentModal } from "./CreateNewAgentModal";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isHomePage = location.pathname === "/" || location.pathname === "/app";
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
+        event.preventDefault();
+        if (isHomePage) {
+          navigate('/app');
+        } else {
+          setIsModalOpen(true);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isHomePage, navigate]);
 
   return (
     <TooltipProvider>
@@ -132,15 +153,32 @@ export const ChatSidebar = () => {
         {/* New Chat Button */}
         {!isCollapsed && (
           <div className="p-1">
-            <Button className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border">
-            <div className="flex items-center justify-between w-full">
-            <div className="flex items-center">
-              <Plus className="mr-[10px]"/>
-              New Agent
-              </div>
-              <div>⌘ N</div>
-            </div>
-            </Button>
+            {isHomePage ? (
+              <Button
+                onClick={() => navigate('/app')}
+                className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <Plus className="mr-[10px]"/>
+                    New Agent
+                  </div>
+                  <div>⌘ N</div>
+                </div>
+              </Button>
+            ) : (
+              <CreateNewAgentModal open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <Button className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <Plus className="mr-[10px]"/>
+                      New Agent
+                    </div>
+                    <div>⌘ N</div>
+                  </div>
+                </Button>
+              </CreateNewAgentModal>
+            )}
           </div>
         )}
 
