@@ -106,28 +106,28 @@ export const RightSidebar = () => {
         <TabsList className="grid w-full grid-cols-4 bg-muted rounded-none border-b border-border">
           <TabsTrigger
             value="plan"
-            className="flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
+            className="cursor-pointer flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
           >
             <CheckSquare className="w-3 h-3" />
             {width > 280 && "Plan"}
           </TabsTrigger>
           <TabsTrigger
             value="changes"
-            className="flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
+            className="cursor-pointer flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
           >
             <GitBranch className="w-3 h-3" />
             {width > 280 && "Changes"}
           </TabsTrigger>
           <TabsTrigger
             value="logs"
-            className="flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
+            className="cursor-pointer flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
           >
             <FileText className="w-3 h-3" />
             {width > 280 && "Logs"}
           </TabsTrigger>
           <TabsTrigger
             value="terminal"
-            className="flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
+            className="cursor-pointer flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
           >
             <Terminal className="w-3 h-3" />
             {width > 280 && "Terminal"}

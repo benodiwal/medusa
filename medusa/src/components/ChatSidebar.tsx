@@ -5,8 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
-import { ArchiveIcon, Check, ChevronDown, Copy, HelpCircle, Home, MessageSquare, MoreHorizontal, Plus, Search, Settings, Sidebar, ArrowUpDown, Trash2 } from "lucide-react";
+import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settings, Sidebar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ConversationItem } from "./ConversationItem";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,7 +18,7 @@ export const ChatSidebar = () => {
       <aside
         className={`relative h-screen transition-all duration-300 ${
           isCollapsed
-            ? "w-16 bg-sidebar"
+            ? "w-16 bg-sidebar-background"
             : "w-78 bg-card border-r border-border"
         }`}
       >
@@ -148,87 +149,27 @@ export const ChatSidebar = () => {
           <div className="p-2">
             {!isCollapsed && (
               <div className="space-y-1">
-                <div className="w-full text-left px-1 py-2 text-sm">
-                  <div 
+                <ConversationItem
+                  title="Hi"
+                  subtitle="21 hrs ago • sculptor/vengefu..."
+                  isActive={true}
                   onClick={() => navigate('/agent')}
-                  className="flex items-center gap-3 bg-secondary/80 cursor-pointer p-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="flex-1 truncate">
-                      <div className="font-medium text-foreground">Hi</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        21 hrs ago • sculptor/vengefu...
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <TooltipButton
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-secondary"
-                        tooltip="Start Pairing Mode"
-                        tooltipSide="top"
-                      >
-                        <ArrowUpDown className="w-4 h-4" />
-                      </TooltipButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-white/10 transition-colors">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          side="right"
-                          className="w-56 bg-sidebar-background border-sidebar-border"
-                        >
-                          <DropdownMenuItem className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground">
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy Branch Name
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground">
-                            <ArchiveIcon className="w-4 h-4 mr-2" />
-                            Archive
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer text-red-400 hover:bg-white/10 hover:text-red-400 focus:bg-white/10 focus:text-red-400">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
+                  onPairMode={() => console.log('Start pairing mode')}
+                  onCopyBranch={() => console.log('Copy branch name')}
+                  onArchive={() => console.log('Archive conversation')}
+                  onDelete={() => console.log('Delete conversation')}
+                />
 
-                      <div className="w-full text-left px-3 py-3 text-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="flex-1 truncate">
-                      <div className="font-medium text-foreground">Hi</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        21 hrs ago • sculptor/vengefu...
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <TooltipButton
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-secondary"
-                        tooltip="Start Pairing Mode"
-                        tooltipSide="top"
-                      >
-                        <ArrowUpDown className="w-4 h-4" />
-                      </TooltipButton>
-                      <TooltipButton
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-secondary"
-                        tooltip="More options"
-                        tooltipSide="top"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </TooltipButton>
-                    </div>
-                  </div>
-                </div>
+                <ConversationItem
+                  title="Hi"
+                  subtitle="21 hrs ago • sculptor/vengefu..."
+                  isActive={false}
+                  onClick={() => navigate('/agent')}
+                  onPairMode={() => console.log('Start pairing mode')}
+                  onCopyBranch={() => console.log('Copy branch name')}
+                  onArchive={() => console.log('Archive conversation')}
+                  onDelete={() => console.log('Delete conversation')}
+                />
               </div>
             )}
           </div>

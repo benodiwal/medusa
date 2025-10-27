@@ -34,15 +34,15 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
             align="end"
             className="w-56 bg-card border-border"
           >
-            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
               <span className="w-4 h-4 mr-2"></span>
               Merge branch
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
               <span className="w-4 h-4 mr-2"></span>
               Create pull request
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+            <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
               <span className="w-4 h-4 mr-2"></span>
               Fast forward
             </DropdownMenuItem>

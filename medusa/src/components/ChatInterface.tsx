@@ -80,15 +80,15 @@ export const ChatInterface = () => {
                       side="top"
                       className="w-56 bg-card border-border"
                     >
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
                         <span className="w-4 h-4 mr-2"></span>
                         Claude 4.1 Opus
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
                         <Check className="w-4 h-4 mr-2" />
                         Claude 4.5 Sonnet
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
                         <span className="w-4 h-4 mr-2"></span>
                         Claude 4.5 Haiku
                       </DropdownMenuItem>

@@ -144,50 +144,26 @@ All colors MUST be HSL.
 */
 
 @theme {
-  /* Main cream background from loading screen: #FBFBF4 */
+  /* Light theme - Main cream background from loading screen: #FBFBF4 */
   --color-background: hsl(60 28% 97%);
-
-  /* Main brown text from loading screen: #6B5B47 */
   --color-foreground: hsl(35 20% 35%);
-
-  /* Border - subtle cream/beige */
   --color-border: hsl(45 20% 88%);
-
-  /* Input - slightly darker than background */
   --color-input: hsl(50 25% 92%);
-
-  /* Ring - amber accent from particles */
   --color-ring: hsl(45 90% 55%);
-
-  /* Primary - the main brown */
   --color-primary: hsl(35 20% 35%);
   --color-primary-foreground: hsl(60 28% 97%);
-
-  /* Secondary - lighter brown/beige */
   --color-secondary: hsl(40 15% 85%);
   --color-secondary-foreground: hsl(35 20% 35%);
-
-  /* Destructive - keeping red but warmer */
   --color-destructive: hsl(0 65% 55%);
   --color-destructive-foreground: hsl(60 28% 97%);
-
-  /* Muted - soft beige */
   --color-muted: hsl(45 15% 90%);
   --color-muted-foreground: hsl(35 15% 45%);
-
-  /* Accent - amber from particles */
   --color-accent: hsl(45 90% 55%);
   --color-accent-foreground: hsl(35 20% 35%);
-
-  /* Popover - same as card */
   --color-popover: hsl(55 25% 95%);
   --color-popover-foreground: hsl(35 20% 35%);
-
-  /* Card - slightly off from background */
   --color-card: hsl(55 25% 95%);
   --color-card-foreground: hsl(35 20% 35%);
-
-  /* Sidebar - darker brown theme */
   --color-sidebar-background: hsl(35 20% 25%);
   --color-sidebar-foreground: hsl(45 20% 85%);
   --color-sidebar-primary: hsl(45 90% 55%);
@@ -203,8 +179,43 @@ All colors MUST be HSL.
   --radius-lg: var(--radius);
 }
 
+/* Dark theme colors */
+.dark {
+  --color-background: hsl(220 13% 9%);
+  --color-foreground: hsl(210 20% 88%);
+  --color-border: hsl(215 14% 18%);
+  --color-input: hsl(215 14% 15%);
+  --color-ring: hsl(45 90% 55%);
+  --color-primary: hsl(210 20% 88%);
+  --color-primary-foreground: hsl(220 13% 9%);
+  --color-secondary: hsl(215 14% 20%);
+  --color-secondary-foreground: hsl(210 20% 88%);
+  --color-destructive: hsl(0 65% 55%);
+  --color-destructive-foreground: hsl(210 20% 88%);
+  --color-muted: hsl(215 14% 15%);
+  --color-muted-foreground: hsl(215 15% 65%);
+  --color-accent: hsl(45 90% 55%);
+  --color-accent-foreground: hsl(220 13% 9%);
+  --color-popover: hsl(215 14% 12%);
+  --color-popover-foreground: hsl(210 20% 88%);
+  --color-card: hsl(215 14% 12%);
+  --color-card-foreground: hsl(210 20% 88%);
+  --color-sidebar-background: hsl(215 14% 8%);
+  --color-sidebar-foreground: hsl(210 20% 88%);
+  --color-sidebar-primary: hsl(45 90% 55%);
+  --color-sidebar-primary-foreground: hsl(215 14% 8%);
+  --color-sidebar-accent: hsl(215 14% 18%);
+  --color-sidebar-accent-foreground: hsl(210 20% 88%);
+  --color-sidebar-border: hsl(215 14% 20%);
+  --color-sidebar-ring: hsl(45 90% 55%);
+}
+
 * {
   border-color: theme(--color-border);
+}
+
+.dark * {
+  border-color: hsl(215 14% 18%) !important;
 }
 
 body {

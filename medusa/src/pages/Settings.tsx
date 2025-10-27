@@ -6,13 +6,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Check, Bot } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type SettingsSection = "general" | "repositories" | "keybindings" | "account" | "experimental";
 
 const Settings = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [defaultModel, setDefaultModel] = useState("Claude 4.5 Sonnet");
-  const [theme, setTheme] = useState("System");
+  const { theme, setTheme } = useTheme();
 
   const sections = [
     { id: "general" as const, label: "General" },
@@ -29,7 +30,11 @@ const Settings = () => {
     "Claude 3 Haiku",
   ];
 
-  const themeOptions = ["System", "Light", "Dark"];
+  const themeOptions = [
+    { value: "system", label: "System" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" }
+  ] as const;
 
   const renderGeneralSettings = () => (
     <div className="space-y-6">
@@ -51,7 +56,7 @@ const Settings = () => {
               <DropdownMenuItem
                 key={model}
                 onClick={() => setDefaultModel(model)}
-                className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
+                className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
               >
                 {defaultModel === model ? (
                   <Check className="w-4 h-4 mr-2" />
@@ -71,23 +76,23 @@ const Settings = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="cursor-pointer w-full flex items-center justify-between px-3 py-2 text-sm text-foreground bg-card border border-border rounded-md hover:opacity-90 transition-colors">
-              <span>{theme}</span>
+              <span>{themeOptions.find(option => option.value === theme)?.label || "System"}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56 bg-card border-border">
             {themeOptions.map((themeOption) => (
               <DropdownMenuItem
-                key={themeOption}
-                onClick={() => setTheme(themeOption)}
-                className="cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
+                key={themeOption.value}
+                onClick={() => setTheme(themeOption.value)}
+                className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
               >
-                {theme === themeOption ? (
+                {theme === themeOption.value ? (
                   <Check className="w-4 h-4 mr-2" />
                 ) : (
                   <span className="w-4 h-4 mr-2"></span>
                 )}
-                {themeOption}
+                {themeOption.label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

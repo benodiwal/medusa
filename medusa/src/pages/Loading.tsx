@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import TypingAnimation from '../components/TypingAnimation';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Loading = () => {
   const navigate = useNavigate();
+  const { effectiveTheme } = useTheme();
 
   useEffect(() => {
     const redirectTimer = setTimeout(() => {
@@ -17,10 +19,7 @@ const Loading = () => {
   }, [navigate]);
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center w-screen h-screen m-0 p-0"
-      style={{ backgroundColor: '#FBFBF4' }}
-    >
+    <div className="fixed inset-0 flex items-center justify-center w-screen h-screen m-0 p-0 bg-background">
         <motion.div
             key="logo"
             initial={{
@@ -137,8 +136,8 @@ const Loading = () => {
                 speed={150}
                 showCursor={true}
                 delay={1000}
-                className="font-bold tracking-wider"
-                style={{ color: '#6B5B47', fontSize: '1.5rem' }}
+                className="font-bold tracking-wider text-foreground"
+                style={{ fontSize: '1.5rem' }}
               />
             </motion.div>
           </motion.div>
