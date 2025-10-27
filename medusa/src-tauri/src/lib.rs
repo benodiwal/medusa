@@ -12,11 +12,13 @@ pub use state::AppState;
 
 use db::{config::DatabaseConfig, migrations};
 use tauri::Manager;
+use std::sync::Arc;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+// Import our command modules
+use commands::*;
+use agent::orchestrator::AgentOrchestrator;
+use workspace::WorkspaceManager;
+use docker::ContainerManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,8 +29,38 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().add_migrations(&DatabaseConfig::default().url, migrations::all()).build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            // Workspace commands
+            create_workspace,
+            set_active_workspace,
+            get_active_workspace,
+            list_workspaces,
+            delete_workspace,
+            // Agent commands
+            create_agent,
+            list_agents,
+            get_agent,
+            stop_agent,
+            archive_agent
+        ])
         .setup(|app| {
+            // Initialize managers and orchestrator
+            let container_manager = Arc::new(
+                ContainerManager::new()
+                    .map_err(|e| format!("Failed to initialize ContainerManager: {}", e))?
+            );
+            let workspace_manager = Arc::new(WorkspaceManager::new());
+            let agent_orchestrator = Arc::new(AgentOrchestrator::new(
+                container_manager.clone(),
+                workspace_manager.clone(),
+            ));
+
+            // Register state
+            app.manage(container_manager);
+            app.manage(workspace_manager);
+            app.manage(agent_orchestrator);
+
             let window = app.get_webview_window("main").unwrap();
             window.maximize().unwrap();
             Ok(())

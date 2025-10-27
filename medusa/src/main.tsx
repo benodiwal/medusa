@@ -8,30 +8,33 @@ import Agent from "./pages/Agent";
 import Settings from "./pages/Settings";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { WorkspaceProvider } from "./contexts/WorkspaceContext";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Loading />} />
-          <Route path="/app" element={
-            <Layout>
-              <App />
-            </Layout>
-          } />
-          <Route path="/agent" element={
-            <Layout>
-              <Agent />
-            </Layout>
-          } />
-          <Route path="/settings" element={
-            <Layout>
-              <Settings />
-            </Layout>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <WorkspaceProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Loading />} />
+            <Route path="/app" element={
+              <Layout>
+                <App />
+              </Layout>
+            } />
+            <Route path="/agent" element={
+              <Layout>
+                <Agent />
+              </Layout>
+            } />
+            <Route path="/settings" element={
+              <Layout>
+                <Settings />
+              </Layout>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </WorkspaceProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

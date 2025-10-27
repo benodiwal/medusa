@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import {
   Image,
   Paperclip,
@@ -15,6 +16,7 @@ import {
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
+  const { activeWorkspace } = useWorkspace();
 
   return (
     <TooltipProvider>
@@ -25,10 +27,10 @@ export const ChatInterface = () => {
           {/* Title Section */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-semibold text-foreground">
-              churnguard
+              {activeWorkspace?.name || "No workspace"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              /users/sachielagentv1/churnguard
+              {activeWorkspace?.repo_path || "No repository selected"}
             </p>
           </div>
 

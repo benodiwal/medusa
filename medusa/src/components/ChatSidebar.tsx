@@ -5,11 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
-import { ArchiveIcon, Check, ChevronDown, Copy, HelpCircle, Home, MessageSquare, MoreHorizontal, Plus, Search, Settings, Sidebar, ArrowUpDown, Trash2, ArrowLeft } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settings, Sidebar, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 import { CreateNewAgentModal } from "./CreateNewAgentModal";
 import { SearchAgentsModal } from "./SearchAgentsModal";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,6 +18,18 @@ export const ChatSidebar = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Workspace management
+  const {
+    activeWorkspace,
+    workspaces,
+    isLoading: isWorkspaceLoading,
+    error: workspaceError,
+    createWorkspaceFromDirectory,
+    refreshActiveWorkspace,
+    refreshWorkspaces,
+    switchWorkspace,
+  } = useWorkspace();
 
   // Mock data - replace with real data later
   const activeAgents = [
@@ -36,6 +49,15 @@ export const ChatSidebar = () => {
       isActive: false
     }
   ];
+
+
+  // Handle workspace errors
+  useEffect(() => {
+    if (workspaceError) {
+      console.error('Workspace error:', workspaceError);
+      // You could show a toast notification here
+    }
+  }, [workspaceError]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -62,6 +84,26 @@ export const ChatSidebar = () => {
   const handleDeleteAgent = (agentId: string) => {
     console.log("Delete agent:", agentId);
     // TODO: Implement delete functionality
+  };
+
+  const handleOpenNewRepo = async () => {
+    try {
+      await createWorkspaceFromDirectory();
+      // The useWorkspace hook will automatically update the active workspace
+      console.log("Successfully created and switched to new workspace");
+    } catch (error) {
+      console.error("Failed to create workspace:", error);
+      // Error is already handled by the useWorkspace hook
+    }
+  };
+
+  const handleSwitchWorkspace = async (workspaceId: string) => {
+    try {
+      await switchWorkspace(workspaceId);
+      console.log("Successfully switched workspace");
+    } catch (error) {
+      console.error("Failed to switch workspace:", error);
+    }
   };
 
   return (
@@ -293,8 +335,11 @@ export const ChatSidebar = () => {
                 {/* Workspace Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="cursor-pointer w-full flex items-center justify-between px-3 py-2 text-sm text-sidebar-foreground bg-sidebar-background border border-sidebar-border rounded-md hover:opacity-90 transition-colors">
-                      <span>churnguard</span>
+                    <button
+                      className="cursor-pointer w-full flex items-center justify-between px-3 py-2 text-sm text-sidebar-foreground bg-sidebar-background border border-sidebar-border rounded-md hover:opacity-90 transition-colors"
+                      disabled={isWorkspaceLoading}
+                    >
+                      <span>{activeWorkspace?.name || "No workspace"}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   </DropdownMenuTrigger>
@@ -303,14 +348,32 @@ export const ChatSidebar = () => {
                     side="top"
                     className="w-73 bg-sidebar-background border-sidebar-border"
                   >
-                    <DropdownMenuItem className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground">
-                      <Check className="w-4 h-4 mr-2" />
-                      churnguard
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-sidebar-border" />
-                    <DropdownMenuItem className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground">
+                    {/* List existing workspaces */}
+                    {workspaces.map((workspace) => (
+                      <DropdownMenuItem
+                        key={workspace.id}
+                        onClick={() => handleSwitchWorkspace(workspace.id)}
+                        className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground"
+                      >
+                        {activeWorkspace?.id === workspace.id ? (
+                          <Check className="w-4 h-4 mr-2" />
+                        ) : (
+                          <span className="w-4 h-4 mr-2"></span>
+                        )}
+                        {workspace.name}
+                      </DropdownMenuItem>
+                    ))}
+
+                    {workspaces.length > 0 && <DropdownMenuSeparator className="bg-sidebar-border" />}
+
+                    {/* Open New Repo option */}
+                    <DropdownMenuItem
+                      onClick={handleOpenNewRepo}
+                      disabled={isWorkspaceLoading}
+                      className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       <Plus className="w-4 h-4 mr-2" />
-                      Open New Repo
+                      {isWorkspaceLoading ? "Opening..." : "Open New Repo"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
