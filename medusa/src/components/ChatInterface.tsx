@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useAgent } from "@/contexts/AgentContext";
+import { useNavigate } from "react-router-dom";
 import {
   Image,
   Paperclip,
@@ -16,7 +18,29 @@ import {
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
+  const [selectedModel, setSelectedModel] = useState("sonnet");
   const { activeWorkspace } = useWorkspace();
+  const { createAgent, isLoading: isCreatingAgent, error: agentError } = useAgent();
+  const navigate = useNavigate();
+
+  const handleSubmit = async () => {
+    if (!message.trim()) return;
+
+    try {
+      const agentId = await createAgent(message.trim(), selectedModel);
+      setMessage("");
+      navigate('/agent');
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -40,8 +64,10 @@ export const ChatInterface = () => {
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Describe your task..."
                 className="min-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
+                disabled={isCreatingAgent}
               />
 
               {/* Toolbar */}
@@ -73,7 +99,7 @@ export const ChatInterface = () => {
                     <DropdownMenuTrigger asChild>
                       <button className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted rounded-md hover:bg-muted/80 transition-colors">
                         <Bot className="w-4 h-4" />
-                        <span>Sonnet</span>
+                        <span>{selectedModel === "opus" ? "Opus" : selectedModel === "haiku" ? "Haiku" : "Sonnet"}</span>
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </DropdownMenuTrigger>
@@ -82,22 +108,31 @@ export const ChatInterface = () => {
                       side="top"
                       className="w-56 bg-card border-border"
                     >
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
-                        <span className="w-4 h-4 mr-2"></span>
+                        <DropdownMenuItem
+                        onClick={() => setSelectedModel("opus")}
+                        className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+                        {selectedModel === "opus" ? <Check className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2"></span>}
                         Claude 4.1 Opus
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
-                        <Check className="w-4 h-4 mr-2" />
+                      <DropdownMenuItem
+                        onClick={() => setSelectedModel("sonnet")}
+                        className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+                        {selectedModel === "sonnet" ? <Check className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2"></span>}
                         Claude 4.5 Sonnet
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
-                        <span className="w-4 h-4 mr-2"></span>
+                      <DropdownMenuItem
+                        onClick={() => setSelectedModel("haiku")}
+                        className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+                        {selectedModel === "haiku" ? <Check className="w-4 h-4 mr-2" /> : <span className="w-4 h-4 mr-2"></span>}
                         Claude 4.5 Haiku
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <button className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!message.trim() || isCreatingAgent}
+                    className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

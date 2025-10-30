@@ -212,6 +212,7 @@ All colors MUST be HSL.
 
 * {
   border-color: theme(--color-border);
+  outline: none;
 }
 
 .dark * {

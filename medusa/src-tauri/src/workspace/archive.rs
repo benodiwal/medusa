@@ -77,6 +77,7 @@ impl ArchiveManager {
         let agent_id = agent.id.0.clone();
         let archived = ArchivedAgent::new(agent, reason);
         self.archives.insert(agent_id.clone(), archived);
+
         agent_id
     }
 

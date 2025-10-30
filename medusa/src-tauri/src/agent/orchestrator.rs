@@ -154,14 +154,31 @@ impl AgentOrchestrator {
         None
     }
 
-    /// List agents in active workspace
+    /// List all agents (active and archived) in active workspace
     pub async fn list_agents(&self) -> Result<Vec<crate::agent::types::Agent>> {
         let workspace = self.workspace_manager
             .get_active_workspace()
             .await
             .ok_or_else(|| anyhow::anyhow!("No active workspace"))?;
 
-        Ok(workspace.list_active_agents().into_iter().cloned().collect())
+        let mut agents = Vec::new();
+
+        // Add active agents
+        agents.extend(workspace.list_active_agents().into_iter().cloned());
+
+        // Add archived agents (extract the Agent from ArchivedAgent)
+        agents.extend(
+            workspace.list_archived_agents()
+                .into_iter()
+                .map(|archived| {
+                    let mut agent = archived.agent.clone();
+                    // Update status to reflect it's archived
+                    agent.status = crate::agent::types::AgentStatus::Archived;
+                    agent
+                })
+        );
+
+        Ok(agents)
     }
 
     /// Cleanup entire workspace - stop all containers and archive agents

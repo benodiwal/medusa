@@ -30,6 +30,7 @@ pub enum AgentStatus {
     Completed,
     Failed,
     Stopped,
+    Archived,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

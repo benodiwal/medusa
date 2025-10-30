@@ -10,7 +10,9 @@ import { useNavigate } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 import { CreateNewAgentModal } from "./CreateNewAgentModal";
 import { SearchAgentsModal } from "./SearchAgentsModal";
+import { LoadingOverlay } from "./LoadingOverlay";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useAgent } from "@/contexts/AgentContext";
 
 export const ChatSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -31,24 +33,24 @@ export const ChatSidebar = () => {
     switchWorkspace,
   } = useWorkspace();
 
-  // Mock data - replace with real data later
-  const activeAgents = [
-    {
-      id: "1",
-      name: "Hi",
-      lastMessage: "21 hrs ago • sculptor/vengefu...",
-      isActive: true
-    }
-  ];
+  // Agent management
+  const {
+    agents,
+    isLoading: isAgentLoading,
+    isArchiving,
+    error: agentError,
+    archiveAgent,
+    stopAgent,
+    selectAgent,
+  } = useAgent();
 
-  const archivedAgents = [
-    {
-      id: "2",
-      name: "Archived Agent",
-      lastMessage: "1 week ago • sculptor/test...",
-      isActive: false
-    }
-  ];
+  // Filter agents by status
+  const activeAgents = agents.filter(agent =>
+    agent.status.toLowerCase() !== 'archived'
+  );
+  const archivedAgents = agents.filter(agent =>
+    agent.status.toLowerCase() === 'archived'
+  );
 
 
   // Handle workspace errors
@@ -76,14 +78,20 @@ export const ChatSidebar = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleArchiveAgent = (agentId: string) => {
-    console.log("Archive agent:", agentId);
-    // TODO: Implement archive functionality
+  const handleArchiveAgent = async (agentId: string) => {
+    try {
+      await archiveAgent(agentId);
+    } catch (error) {
+      console.error("Failed to archive agent:", error);
+    }
   };
 
-  const handleDeleteAgent = (agentId: string) => {
-    console.log("Delete agent:", agentId);
-    // TODO: Implement delete functionality
+  const handleDeleteAgent = async (agentId: string) => {
+    try {
+      await stopAgent(agentId);
+    } catch (error) {
+      console.error("Failed to stop agent:", error);
+    }
   };
 
   const handleOpenNewRepo = async () => {
@@ -107,7 +115,9 @@ export const ChatSidebar = () => {
   };
 
   return (
-    <TooltipProvider>
+    <>
+      <LoadingOverlay isLoading={isArchiving} message="Archiving agent..." />
+      <TooltipProvider>
       <aside
         className={`relative h-screen transition-all duration-300 ${
           isCollapsed
@@ -263,11 +273,14 @@ export const ChatSidebar = () => {
                       <ConversationItem
                         key={agent.id}
                         title={agent.name}
-                        subtitle={agent.lastMessage}
-                        isActive={agent.isActive}
+                        subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
+                        isActive={false}
                         onArchive={() => handleArchiveAgent(agent.id)}
                         onDelete={() => handleDeleteAgent(agent.id)}
-                        onClick={() => navigate('/agent')}
+                        onClick={() => {
+                          selectAgent(agent.id);
+                          navigate('/agent');
+                        }}
                       />
                     ))
                   ) : (
@@ -276,17 +289,26 @@ export const ChatSidebar = () => {
                     </div>
                   )
                 ) : (
-                  activeAgents.map((agent) => (
-                    <ConversationItem
-                      key={agent.id}
-                      title={agent.name}
-                      subtitle={agent.lastMessage}
-                      isActive={agent.isActive}
-                      onArchive={() => handleArchiveAgent(agent.id)}
-                      onDelete={() => handleDeleteAgent(agent.id)}
-                      onClick={() => navigate('/agent')}
-                    />
-                  ))
+                  activeAgents.length > 0 ? (
+                    activeAgents.map((agent) => (
+                      <ConversationItem
+                        key={agent.id}
+                        title={agent.name}
+                        subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
+                        isActive={agent.status === 'running'}
+                        onArchive={() => handleArchiveAgent(agent.id)}
+                        onDelete={() => handleDeleteAgent(agent.id)}
+                        onClick={() => {
+                          selectAgent(agent.id);
+                          navigate('/agent');
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No agents yet. Create your first agent to get started!
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -398,5 +420,6 @@ export const ChatSidebar = () => {
       </SearchAgentsModal>
     </aside>
     </TooltipProvider>
+    </>
   );
 };

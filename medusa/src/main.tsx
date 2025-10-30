@@ -9,12 +9,14 @@ import Settings from "./pages/Settings";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { WorkspaceProvider } from "./contexts/WorkspaceContext";
+import { AgentProvider } from "./contexts/AgentContext";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
       <WorkspaceProvider>
-        <BrowserRouter>
+        <AgentProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Loading />} />
             <Route path="/app" element={
@@ -33,7 +35,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
               </Layout>
             } />
           </Routes>
-        </BrowserRouter>
+          </BrowserRouter>
+        </AgentProvider>
       </WorkspaceProvider>
     </ThemeProvider>
   </React.StrictMode>,

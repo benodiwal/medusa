@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAgent } from "@/contexts/AgentContext";
+import { useNavigate } from "react-router-dom";
 import {
   Image,
   Paperclip,
@@ -27,13 +29,35 @@ interface CreateNewAgentModalProps {
 
 export const CreateNewAgentModal = ({ children, open, onOpenChange }: CreateNewAgentModalProps) => {
   const [message, setMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Claude 4.5 Sonnet");
+  const [selectedModel, setSelectedModel] = useState("sonnet");
+  const { createAgent, isLoading: isCreatingAgent, error: agentError } = useAgent();
+  const navigate = useNavigate();
 
   const modelOptions = [
-    "Claude 4.5 Sonnet",
-    "Claude 4.1 Opus",
-    "Claude 4.5 Haiku",
+    { value: "sonnet", label: "Claude 4.5 Sonnet" },
+    { value: "opus", label: "Claude 4.1 Opus" },
+    { value: "haiku", label: "Claude 4.5 Haiku" },
   ];
+
+  const handleSubmit = async () => {
+    if (!message.trim()) return;
+
+    try {
+      const agentId = await createAgent(message.trim(), selectedModel);
+      setMessage("");
+      onOpenChange?.(false);
+      navigate('/agent');
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,8 +83,10 @@ export const CreateNewAgentModal = ({ children, open, onOpenChange }: CreateNewA
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Describe your task..."
                   className="min-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
+                  disabled={isCreatingAgent}
                 />
 
                     {/* Toolbar */}
@@ -92,34 +118,32 @@ export const CreateNewAgentModal = ({ children, open, onOpenChange }: CreateNewA
                           <DropdownMenuTrigger asChild>
                             <button className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted rounded-md hover:bg-muted/80 transition-colors">
                               <Bot className="w-4 h-4" />
-                              <span>{selectedModel}</span>
+                              <span>{modelOptions.find(m => m.value === selectedModel)?.label}</span>
                               <ChevronDown className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-56 bg-card border-border">
                             {modelOptions.map((model) => (
                               <DropdownMenuItem
-                                key={model}
-                                onClick={() => setSelectedModel(model)}
+                                key={model.value}
+                                onClick={() => setSelectedModel(model.value)}
                                 className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
                               >
-                                {selectedModel === model ? (
+                                {selectedModel === model.value ? (
                                   <Check className="w-4 h-4 mr-2" />
                                 ) : (
                                   <span className="w-4 h-4 mr-2"></span>
                                 )}
-                                {model}
+                                {model.label}
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
 
                         <button
-                          className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center"
-                          onClick={() => {
-                            // Handle create agent logic
-                            console.log("Creating agent with:", { message, selectedModel });
-                          }}
+                          onClick={handleSubmit}
+                          disabled={!message.trim() || isCreatingAgent}
+                          className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <ArrowRight className="w-4 h-4" />
                         </button>
