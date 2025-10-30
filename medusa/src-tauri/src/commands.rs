@@ -288,3 +288,22 @@ pub async fn archive_agent(
         }
     }
 }
+
+#[tauri::command]
+pub async fn get_agent_logs(
+    agent_id: String,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<String, String> {
+    info!("Fetching logs for agent: {}", agent_id);
+
+    match agent_orchestrator.get_agent_logs(&agent_id).await {
+        Ok(logs) => {
+            info!("Successfully fetched logs for agent: {}", agent_id);
+            Ok(logs)
+        }
+        Err(e) => {
+            error!("Failed to fetch logs for agent '{}': {}", agent_id, e);
+            Err(format!("Failed to fetch agent logs: {}", e))
+        }
+    }
+}

@@ -48,4 +48,13 @@ export class AgentAPI {
       throw new Error(`Failed to archive agent: ${error}`);
     }
   }
+
+  static async getAgentLogs(agentId: string): ApiResult<string> {
+    try {
+      const logs = await invoke<string>('get_agent_logs', { agentId });
+      return logs;
+    } catch (error) {
+      throw new Error(`Failed to get agent logs: ${error}`);
+    }
+  }
 }

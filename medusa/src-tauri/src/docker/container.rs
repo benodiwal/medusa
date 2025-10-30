@@ -144,10 +144,12 @@ impl ContainerManager {
     #[allow(deprecated)]
     pub async fn get_logs(&self, container_id: &str) -> Result<String> {
         use bollard::container::LogsOptions;
+        use chrono::Local;
 
         let options = LogsOptions::<String> {
             stdout: true,
             stderr: true,
+            timestamps: true,
             tail: "100".to_string(),
             ..Default::default()
         };
@@ -156,7 +158,15 @@ impl ContainerManager {
         let mut stream = self.docker.logs(container_id, Some(options));
 
         while let Some(Ok(log)) = stream.next().await {
-            logs.push_str(&log.to_string());
+            let log_line = log.to_string();
+
+            // If the log line doesn't already have a timestamp, add one
+            if !log_line.starts_with("20") && !log_line.starts_with("[") {
+                let timestamp = Local::now().format("%H:%M:%S%.3f");
+                logs.push_str(&format!("[{}] {}", timestamp, log_line));
+            } else {
+                logs.push_str(&log_line);
+            }
         }
 
         Ok(logs)

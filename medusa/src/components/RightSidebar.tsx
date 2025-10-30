@@ -1,6 +1,8 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckSquare, GitBranch, FileText, Terminal, Clock, AlertCircle, Info, CheckCircle } from "lucide-react";
+import { AgentService } from "@/lib/services/agentService";
+import { useAgent } from "@/contexts/AgentContext";
 
 export const RightSidebar = () => {
   const [activeTab, setActiveTab] = useState("plan");
@@ -13,8 +15,12 @@ export const RightSidebar = () => {
     { type: "output", text: "Local:   http://localhost:3000" },
     { type: "output", text: "Ready in 1.2s" },
   ]);
+  const [containerLogs, setContainerLogs] = useState<string[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  const { agents } = useAgent();
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -65,6 +71,45 @@ export const RightSidebar = () => {
       terminalInputRef.current.focus();
     }
   };
+
+  // Fetch container logs for the current agent
+  useEffect(() => {
+    const fetchLogs = async () => {
+      if (agents && agents.length > 0) {
+        // Get the most recent agent's logs
+        const currentAgent = agents[0];
+        if (currentAgent && currentAgent.status !== 'Archived') {
+          setIsLoadingLogs(true);
+          try {
+            const logs = await AgentService.getAgentLogs(currentAgent.id);
+            // Parse and format the logs
+            const logLines = logs.split('\n').filter(line => line.trim());
+            setContainerLogs(logLines);
+          } catch (error) {
+            console.error('Failed to fetch agent logs:', error);
+            setContainerLogs(['Failed to load container logs']);
+          } finally {
+            setIsLoadingLogs(false);
+          }
+        }
+      }
+    };
+
+    // Initial fetch
+    fetchLogs();
+
+    // Set up polling interval for live logs
+    const interval = setInterval(fetchLogs, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [agents]);
+
+  // Auto-scroll to bottom when new logs arrive
+  useEffect(() => {
+    if (logsEndRef.current && activeTab === 'logs') {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [containerLogs, activeTab]);
 
   // Attach global mouse events when resizing
   React.useEffect(() => {
@@ -155,113 +200,93 @@ export const RightSidebar = () => {
 
           <TabsContent value="logs" className="h-full m-0 p-4">
             <div className="h-full overflow-y-auto font-mono text-xs leading-relaxed">
-              <div className="space-y-0.5">
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:26:27.465</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">creating image</span>
+              {isLoadingLogs ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p>Loading container logs...</p>
+                  </div>
                 </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.971</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#0 building with "desktop-linux"</span>
+              ) : containerLogs.length > 0 ? (
+                <div className="space-y-0.5">
+                  {containerLogs.map((log, index) => {
+                    // Skip empty lines
+                    if (!log.trim()) return null;
+
+                    // Check for header lines (=== ... ===)
+                    if (log.startsWith('===') && log.endsWith('===')) {
+                      return (
+                        <div key={index} className="text-primary font-bold mt-2 mb-1">
+                          {log.replace(/===/g, '').trim()}
+                        </div>
+                      );
+                    }
+
+                    // Parse Docker timestamp format (RFC3339) or custom timestamp format
+                    const dockerTimestampMatch = log.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?)/);
+                    const customTimestampMatch = log.match(/^\[(\d{2}:\d{2}:\d{2}\.\d{3})\]/);
+                    const simpleTimestampMatch = log.match(/^(\d{2}:\d{2}:\d{2}\.\d{3})/);
+
+                    let timestamp = '';
+                    let restOfLog = log;
+
+                    if (dockerTimestampMatch) {
+                      // Convert Docker timestamp to readable format
+                      const date = new Date(dockerTimestampMatch[1]);
+                      const hours = date.getHours().toString().padStart(2, '0');
+                      const minutes = date.getMinutes().toString().padStart(2, '0');
+                      const seconds = date.getSeconds().toString().padStart(2, '0');
+                      const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+                      timestamp = `${hours}:${minutes}:${seconds}.${milliseconds}`;
+                      restOfLog = log.substring(dockerTimestampMatch[0].length).trim();
+                    } else if (customTimestampMatch) {
+                      timestamp = customTimestampMatch[1];
+                      restOfLog = log.substring(customTimestampMatch[0].length).trim();
+                    } else if (simpleTimestampMatch) {
+                      timestamp = simpleTimestampMatch[1];
+                      restOfLog = log.substring(simpleTimestampMatch[0].length).trim();
+                    }
+
+                    // Check for log levels
+                    const levelMatch = restOfLog.match(/^\[(DEBUG|INFO|WARN|ERROR|TRACE)\]/i);
+                    let level = '';
+                    let message = restOfLog;
+
+                    if (levelMatch) {
+                      level = levelMatch[1].toUpperCase();
+                      message = restOfLog.substring(levelMatch[0].length).trim();
+                    }
+
+                    return (
+                      <div key={index} className="font-mono text-foreground">
+                        {timestamp && (
+                          <span className="text-muted-foreground text-xs">[{timestamp}]</span>
+                        )}
+                        {level && (
+                          <span className={`ml-2 text-xs font-semibold ${
+                            level === 'ERROR' ? 'text-red-500' :
+                            level === 'WARN' ? 'text-yellow-500' :
+                            level === 'INFO' ? 'text-blue-500' :
+                            level === 'DEBUG' ? 'text-gray-500' :
+                            'text-muted-foreground'
+                          }`}>
+                            [{level}]
+                          </span>
+                        )}
+                        <span className="ml-2">{message || restOfLog}</span>
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                  <div ref={logsEndRef} />
                 </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.971</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">|</span>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No container logs available</p>
+                  </div>
                 </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.971</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#1 [internal] load build definition</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.971</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#1 transferring dockerfile: 6.6kb</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#1 DONE 0.0s</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">|</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#2 [context imbue_user_repo] load .dockerignore</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#2 transferring imbue_user_repo: 2B done</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#2 DONE 0.0s</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">|</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#3 [context ssh_keypair_dir] load</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#3 transferring ssh_keypair_dir: 32B done</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#3 DONE 0.0s</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">|</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.972</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#4 [internal] load metadata for</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.973</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#4 DONE 0.0s</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.973</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">|</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.973</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#5 [internal] load .dockerignore</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.973</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#5 transferring context: 2B done</span>
-                </div>
-                <div className="text-foreground">
-                  <span className="text-muted-foreground">20:27:51.973</span>
-                  <span className="text-muted-foreground ml-2">[DEBUG]</span>
-                  <span className="ml-2">#5 DONE 0.0s</span>
-                </div>
-              </div>
+              )}
             </div>
           </TabsContent>
 

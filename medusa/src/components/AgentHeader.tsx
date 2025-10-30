@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useAgent } from "@/contexts/AgentContext";
 import { useEffect, useState } from "react";
+import type { AgentResponse } from "@/lib/api/types";
 
 interface AgentHeaderProps {
   sidebarOpen: boolean;
@@ -12,7 +13,7 @@ interface AgentHeaderProps {
 
 export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) => {
   const { agents, selectedAgentId, isArchiving, archiveAgent, stopAgent } = useAgent();
-  const [currentAgent, setCurrentAgent] = useState(null);
+  const [currentAgent, setCurrentAgent] = useState<AgentResponse | null>(null);
 
   // Use the selected agent or fallback to most recent
   useEffect(() => {

@@ -15,7 +15,10 @@ use tauri::Manager;
 use std::sync::Arc;
 
 // Import our command modules
-use commands::*;
+use commands::{
+    create_workspace, set_active_workspace, get_active_workspace, list_workspaces, delete_workspace,
+    create_agent, list_agents, get_agent, stop_agent, archive_agent, get_agent_logs
+};
 use agent::orchestrator::AgentOrchestrator;
 use workspace::WorkspaceManager;
 use docker::ContainerManager;
@@ -42,7 +45,8 @@ pub fn run() {
             list_agents,
             get_agent,
             stop_agent,
-            archive_agent
+            archive_agent,
+            get_agent_logs
         ])
         .setup(|app| {
             // Initialize managers and orchestrator

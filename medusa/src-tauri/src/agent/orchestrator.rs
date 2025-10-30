@@ -181,6 +181,35 @@ impl AgentOrchestrator {
         Ok(agents)
     }
 
+    /// Get logs for an agent's container
+    pub async fn get_agent_logs(&self, agent_id: &str) -> Result<String> {
+        let agent = self.find_agent(agent_id).await
+            .ok_or_else(|| anyhow::anyhow!("Agent not found"))?;
+
+        info!("Fetching logs for agent '{}' ({})", agent.agent.name, agent_id);
+
+        // Get logs from container
+        let mut logs = self.container_manager
+            .get_logs(agent.container_id())
+            .await?;
+
+        // Add agent context header if logs are available
+        if !logs.is_empty() {
+            let header = format!(
+                "=== Agent: {} ({}) ===\n=== Status: {:?} ===\n=== Container: {} ===\n\n",
+                agent.agent.name,
+                agent_id,
+                agent.agent.status,
+                &agent.container_id()[..12] // Show first 12 chars of container ID
+            );
+            logs = format!("{}{}", header, logs);
+        }
+
+        debug!("Successfully fetched {} bytes of logs for agent '{}'", logs.len(), agent.agent.name);
+        Ok(logs)
+    }
+
+
     /// Cleanup entire workspace - stop all containers and archive agents
     pub async fn cleanup_workspace(&self, workspace_id: &str) -> Result<()> {
         info!("Cleaning up workspace {}", workspace_id);

@@ -36,4 +36,11 @@ export class AgentService {
   static async archiveAgent(agentId: string, reason?: string): Promise<void> {
     await AgentAPI.archiveAgent(agentId, reason);
   }
+
+  /**
+   * Get logs for an agent
+   */
+  static async getAgentLogs(agentId: string): Promise<string> {
+    return await AgentAPI.getAgentLogs(agentId);
+  }
 }
