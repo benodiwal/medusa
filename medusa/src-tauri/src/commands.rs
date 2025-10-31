@@ -307,3 +307,23 @@ pub async fn get_agent_logs(
         }
     }
 }
+
+#[tauri::command]
+pub async fn execute_terminal_command(
+    agent_id: String,
+    command: String,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<String, String> {
+    info!("Executing terminal command for agent {}: {}", agent_id, command);
+
+    match agent_orchestrator.execute_terminal_command(&agent_id, &command).await {
+        Ok(output) => {
+            info!("Successfully executed terminal command for agent: {}", agent_id);
+            Ok(output)
+        }
+        Err(e) => {
+            error!("Failed to execute terminal command for agent '{}': {}", agent_id, e);
+            Err(format!("Failed to execute command: {}", e))
+        }
+    }
+}

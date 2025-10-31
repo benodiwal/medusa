@@ -57,4 +57,13 @@ export class AgentAPI {
       throw new Error(`Failed to get agent logs: ${error}`);
     }
   }
+
+  static async executeTerminalCommand(agentId: string, command: string): ApiResult<string> {
+    try {
+      const output = await invoke<string>('execute_terminal_command', { agentId, command });
+      return output;
+    } catch (error) {
+      throw new Error(`Failed to execute terminal command: ${error}`);
+    }
+  }
 }

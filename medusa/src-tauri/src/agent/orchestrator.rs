@@ -209,6 +209,30 @@ impl AgentOrchestrator {
         Ok(logs)
     }
 
+    /// Execute a terminal command in an agent's container
+    pub async fn execute_terminal_command(&self, agent_id: &str, command: &str) -> Result<String> {
+        let agent = self.find_agent(agent_id).await
+            .ok_or_else(|| anyhow::anyhow!("Agent not found"))?;
+
+        info!("Executing terminal command in agent '{}' ({}): {}", agent.agent.name, agent_id, command);
+
+        // Parse command into shell arguments
+        let cmd_parts: Vec<&str> = if command.trim().is_empty() {
+            return Err(anyhow::anyhow!("Empty command"));
+        } else {
+            // Use shell to execute the command to handle pipes, redirects, etc.
+            vec!["sh", "-c", command]
+        };
+
+        // Execute command in container
+        let output = self.container_manager
+            .exec_in_container(agent.container_id(), cmd_parts)
+            .await?;
+
+        debug!("Successfully executed terminal command for agent '{}'", agent.agent.name);
+        Ok(output)
+    }
+
 
     /// Cleanup entire workspace - stop all containers and archive agents
     pub async fn cleanup_workspace(&self, workspace_id: &str) -> Result<()> {

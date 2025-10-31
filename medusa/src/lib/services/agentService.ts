@@ -43,4 +43,11 @@ export class AgentService {
   static async getAgentLogs(agentId: string): Promise<string> {
     return await AgentAPI.getAgentLogs(agentId);
   }
+
+  /**
+   * Execute a terminal command in an agent's container
+   */
+  static async executeTerminalCommand(agentId: string, command: string): Promise<string> {
+    return await AgentAPI.executeTerminalCommand(agentId, command);
+  }
 }

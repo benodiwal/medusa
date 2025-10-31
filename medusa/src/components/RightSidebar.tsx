@@ -10,10 +10,9 @@ export const RightSidebar = () => {
   const [isResizing, setIsResizing] = useState(false);
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalHistory, setTerminalHistory] = useState([
-    { type: "command", text: "npm run dev" },
-    { type: "output", text: "Starting development server..." },
-    { type: "output", text: "Local:   http://localhost:3000" },
-    { type: "output", text: "Ready in 1.2s" },
+    { type: "output", text: "Welcome to Medusa Agent Terminal" },
+    { type: "output", text: "Commands are executed in the agent's container environment." },
+    { type: "output", text: "Type commands and press Enter to execute." },
   ]);
   const [containerLogs, setContainerLogs] = useState<string[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -43,26 +42,62 @@ export const RightSidebar = () => {
     setIsResizing(false);
   }, []);
 
-  const handleTerminalCommand = (e: React.KeyboardEvent) => {
+  const handleTerminalCommand = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && terminalInput.trim()) {
+      const command = terminalInput.trim();
       const newHistory = [
         ...terminalHistory,
-        { type: "command", text: terminalInput },
+        { type: "command", text: command },
       ];
 
-      // Simulate command responses
-      if (terminalInput.includes('ls')) {
-        newHistory.push({ type: "output", text: "src/  package.json  README.md  node_modules/" });
-      } else if (terminalInput.includes('git status')) {
-        newHistory.push({ type: "output", text: "On branch main\nYour branch is up to date with 'origin/main'." });
-      } else if (terminalInput.includes('npm')) {
-        newHistory.push({ type: "output", text: "Command executed successfully" });
-      } else {
-        newHistory.push({ type: "output", text: `Command '${terminalInput}' executed` });
-      }
-
-      setTerminalHistory(newHistory);
+      // Clear input immediately
       setTerminalInput("");
+
+      // Show command in history
+      setTerminalHistory(newHistory);
+
+      // Execute real command if we have an active agent
+      if (agents && agents.length > 0) {
+        const currentAgent = agents[0];
+        if (currentAgent && currentAgent.status !== 'Archived') {
+          try {
+            // Show loading indicator
+            const loadingHistory = [...newHistory, { type: "output", text: "Executing..." }];
+            setTerminalHistory(loadingHistory);
+
+            // Execute command in container
+            const output = await AgentService.executeTerminalCommand(currentAgent.id, command);
+
+            // Update with actual output
+            const finalHistory = [
+              ...newHistory,
+              { type: "output", text: output || "(no output)" }
+            ];
+            setTerminalHistory(finalHistory);
+          } catch (error) {
+            console.error('Failed to execute terminal command:', error);
+            const errorHistory = [
+              ...newHistory,
+              { type: "output", text: `Error: ${error instanceof Error ? error.message : 'Command failed'}` }
+            ];
+            setTerminalHistory(errorHistory);
+          }
+        } else {
+          // No active agent
+          const errorHistory = [
+            ...newHistory,
+            { type: "output", text: "Error: No active agent available" }
+          ];
+          setTerminalHistory(errorHistory);
+        }
+      } else {
+        // No agents
+        const errorHistory = [
+          ...newHistory,
+          { type: "output", text: "Error: No agents available" }
+        ];
+        setTerminalHistory(errorHistory);
+      }
     }
   };
 
