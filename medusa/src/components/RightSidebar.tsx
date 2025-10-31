@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckSquare, GitBranch, FileText, Terminal, Clock, AlertCircle, Info, CheckCircle } from "lucide-react";
+import { CheckSquare, GitBranch, FileText, Terminal } from "lucide-react";
 import { AgentService } from "@/lib/services/agentService";
 import { useAgent } from "@/contexts/AgentContext";
 
@@ -19,7 +19,21 @@ export const RightSidebar = () => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const { agents } = useAgent();
+  const { agents, selectedAgentId } = useAgent();
+
+  // Get the current agent based on selectedAgentId or fallback to most recent
+  const getCurrentAgent = useCallback(() => {
+    if (!agents || agents.length === 0) return null;
+
+    if (selectedAgentId) {
+      const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
+      if (selectedAgent) return selectedAgent;
+    }
+
+    // Fallback to most recent active agent
+    const activeAgents = agents.filter(agent => agent.status.toLowerCase() !== 'archived');
+    return activeAgents.length > 0 ? activeAgents[activeAgents.length - 1] : null;
+  }, [agents, selectedAgentId]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,9 +71,8 @@ export const RightSidebar = () => {
       setTerminalHistory(newHistory);
 
       // Execute real command if we have an active agent
-      if (agents && agents.length > 0) {
-        const currentAgent = agents[0];
-        if (currentAgent && currentAgent.status !== 'Archived') {
+      const currentAgent = getCurrentAgent();
+      if (currentAgent && currentAgent.status !== 'Archived') {
           try {
             // Show loading indicator
             const loadingHistory = [...newHistory, { type: "output", text: "Executing..." }];
@@ -90,14 +103,6 @@ export const RightSidebar = () => {
           ];
           setTerminalHistory(errorHistory);
         }
-      } else {
-        // No agents
-        const errorHistory = [
-          ...newHistory,
-          { type: "output", text: "Error: No agents available" }
-        ];
-        setTerminalHistory(errorHistory);
-      }
     }
   };
 
@@ -110,23 +115,24 @@ export const RightSidebar = () => {
   // Fetch container logs for the current agent
   useEffect(() => {
     const fetchLogs = async () => {
-      if (agents && agents.length > 0) {
-        // Get the most recent agent's logs
-        const currentAgent = agents[0];
-        if (currentAgent && currentAgent.status !== 'Archived') {
-          setIsLoadingLogs(true);
-          try {
-            const logs = await AgentService.getAgentLogs(currentAgent.id);
-            // Parse and format the logs
-            const logLines = logs.split('\n').filter(line => line.trim());
-            setContainerLogs(logLines);
-          } catch (error) {
-            console.error('Failed to fetch agent logs:', error);
-            setContainerLogs(['Failed to load container logs']);
-          } finally {
-            setIsLoadingLogs(false);
-          }
+      const currentAgent = getCurrentAgent();
+      if (currentAgent && currentAgent.status !== 'Archived') {
+        setIsLoadingLogs(true);
+        try {
+          const logs = await AgentService.getAgentLogs(currentAgent.id);
+          // Parse and format the logs
+          const logLines = logs.split('\n').filter(line => line.trim());
+          setContainerLogs(logLines);
+        } catch (error) {
+          console.error('Failed to fetch agent logs:', error);
+          setContainerLogs(['Failed to load container logs']);
+        } finally {
+          setIsLoadingLogs(false);
         }
+      } else {
+        // Clear logs if no current agent
+        setContainerLogs([]);
+        setIsLoadingLogs(false);
       }
     };
 
@@ -137,7 +143,16 @@ export const RightSidebar = () => {
     const interval = setInterval(fetchLogs, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-  }, [agents]);
+  }, [getCurrentAgent]);
+
+  // Clear terminal history when agent changes
+  useEffect(() => {
+    setTerminalHistory([
+      { type: "output", text: "Welcome to Medusa Agent Terminal" },
+      { type: "output", text: "Commands are executed in the agent's container environment." },
+      { type: "output", text: "Type commands and press Enter to execute." },
+    ]);
+  }, [selectedAgentId]);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
