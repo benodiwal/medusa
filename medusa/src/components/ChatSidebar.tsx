@@ -89,7 +89,10 @@ export const ChatSidebar = () => {
 
   const handleArchiveAgent = async (agentId: string) => {
     try {
-      await archiveAgent(agentId);
+      const success = await archiveAgent(agentId);
+      if (success) {
+        navigate('/app');
+      }
     } catch (error) {
       console.error("Failed to archive agent:", error);
     }
@@ -289,7 +292,6 @@ export const ChatSidebar = () => {
                         title={agent.name}
                         subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
                         isActive={false}
-                        onArchive={() => handleArchiveAgent(agent.id)}
                         onDelete={() => handleDeleteAgent(agent.id)}
                         onClick={() => {
                           selectAgent(agent.id);
@@ -310,7 +312,6 @@ export const ChatSidebar = () => {
                         title={agent.name}
                         subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
                         isActive={agent.status === 'running'}
-                        onArchive={() => handleArchiveAgent(agent.id)}
                         onDelete={() => handleDeleteAgent(agent.id)}
                         onClick={() => {
                           selectAgent(agent.id);

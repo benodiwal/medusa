@@ -1,4 +1,4 @@
-import { MoreHorizontal, ChevronDown, GitMerge, Users, PanelRightOpen, PanelRightClose, Copy, ArchiveIcon, Trash2 } from "lucide-react";
+import { MoreHorizontal, ChevronDown, GitMerge, PanelRightOpen, PanelRightClose, Copy, ArchiveIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -46,7 +46,10 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
   const handleArchive = async () => {
     if (currentAgent) {
       try {
-        await archiveAgent(currentAgent.id);
+        const success = await archiveAgent(currentAgent.id);
+        if (success) {
+          navigate('/app');
+        }
       } catch (error) {
         console.error('Failed to archive agent:', error);
       }
@@ -142,13 +145,6 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
           </DropdownMenu>
         )}
 
-        {/* Pairing Mode button - only show for active agents */}
-        {currentAgent?.status.toLowerCase() !== 'archived' && (
-          <Button variant="secondary" size="sm" className="h-8 px-3">
-            <Users className="w-3 h-3 mr-1" />
-            Pairing Mode
-          </Button>
-        )}
 
         {/* Sidebar toggle */}
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleSidebar}>

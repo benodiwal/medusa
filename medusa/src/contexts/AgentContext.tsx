@@ -17,7 +17,7 @@ interface AgentActions {
   refreshAgents: () => Promise<void>;
   stopAgent: (agentId: string) => Promise<void>;
   deleteAgent: (agentId: string) => Promise<boolean>;
-  archiveAgent: (agentId: string, reason?: string) => Promise<void>;
+  archiveAgent: (agentId: string, reason?: string) => Promise<boolean>;
   searchAgents: (query: string) => Promise<AgentResponse[]>;
   selectAgent: (agentId: string | null) => void;
   clearError: () => void;
@@ -165,8 +165,16 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
       await AgentService.archiveAgent(agentId, reason);
 
+      // Clear the selected agent if it's the one being archived
+      if (state.selectedAgentId === agentId) {
+        setState(prev => ({ ...prev, selectedAgentId: null }));
+      }
+
       // Refresh agents from backend to get updated status
       await refreshAgents();
+
+      // Return success so components can handle navigation
+      return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to archive agent';
       setError(errorMessage);
@@ -174,10 +182,13 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
       // Refresh on error to ensure state consistency
       await refreshAgents();
+
+      // Return false to indicate failure
+      return false;
     } finally {
       setArchiving(false);
     }
-  }, [setArchiving, setError, refreshAgents]);
+  }, [setArchiving, setError, refreshAgents, state.selectedAgentId]);
 
   const searchAgents = useCallback(async (query: string): Promise<AgentResponse[]> => {
     try {

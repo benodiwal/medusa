@@ -82,6 +82,9 @@ export const ChatInterface = () => {
   };
 
   if (isAgentPage) {
+    // Check if agent is archived
+    const isArchived = currentAgent?.status?.toLowerCase() === 'archived';
+
     // Agent page layout - chat at bottom
     return (
       <TooltipProvider>
@@ -96,6 +99,11 @@ export const ChatInterface = () => {
               <p className="text-sm text-muted-foreground">
                 {currentAgent ? `Task: ${currentAgent.task}` : "No agent selected"}
               </p>
+              {isArchived && (
+                <p className="text-sm text-amber-600 dark:text-amber-500 font-medium">
+                  This agent has been archived
+                </p>
+              )}
             </div>
 
             {/* Chat Messages */}
@@ -122,53 +130,55 @@ export const ChatInterface = () => {
             </div>
           </div>
 
-          {/* Input Area - Fixed at bottom */}
-          <div className="border-t border-border bg-card p-4">
-            <div className="w-full max-w-3xl mx-auto">
-              <div className="bg-background border border-border rounded-lg overflow-hidden shadow-sm">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Send a message to the agent (Coming soon)..."
-                  className="min-h-[80px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
-                  disabled={isCreatingAgent || !currentAgent}
-                />
+          {/* Input Area - Fixed at bottom (hide for archived agents) */}
+          {!isArchived && (
+            <div className="border-t border-border bg-card p-4">
+              <div className="w-full max-w-3xl mx-auto">
+                <div className="bg-background border border-border rounded-lg overflow-hidden shadow-sm">
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Send a message to the agent (Coming soon)..."
+                    className="min-h-[80px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
+                    disabled={isCreatingAgent || !currentAgent}
+                  />
 
-                {/* Toolbar */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background">
-                  <div className="flex items-center gap-2">
-                    <TooltipButton
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:bg-secondary"
-                      tooltip="Attach files"
-                      tooltipSide="top"
-                    >
-                      <Paperclip className="w-4 h-4" />
-                    </TooltipButton>
-                    <TooltipButton
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:bg-secondary"
-                      tooltip="Attach images"
-                      tooltipSide="top"
-                    >
-                      <Image className="w-4 h-4" />
-                    </TooltipButton>
+                  {/* Toolbar */}
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background">
+                    <div className="flex items-center gap-2">
+                      <TooltipButton
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-secondary"
+                        tooltip="Attach files"
+                        tooltipSide="top"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </TooltipButton>
+                      <TooltipButton
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-secondary"
+                        tooltip="Attach images"
+                        tooltipSide="top"
+                      >
+                        <Image className="w-4 h-4" />
+                      </TooltipButton>
+                    </div>
+
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!message.trim() || isCreatingAgent || !currentAgent}
+                      title="Send message to agent"
+                      className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
-
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!message.trim() || isCreatingAgent || !currentAgent}
-                    title="Send message to agent"
-                    className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </TooltipProvider>
     );
