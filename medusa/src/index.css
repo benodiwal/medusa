@@ -223,3 +223,104 @@ body {
   background-color: theme(--color-background);
   color: theme(--color-foreground);
 }
+
+/* Terminal styles */
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  font-size: 12px;
+}
+
+.terminal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cccccc;
+  font-weight: 500;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.connected {
+  color: #4caf50;
+}
+
+.status-indicator.disconnected {
+  color: #f44336;
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.terminal-actions button {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #3e3e42;
+  color: #cccccc;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.terminal-actions button:hover {
+  background: #3e3e42;
+}
+
+.terminal-actions .close-btn {
+  color: #f44336;
+  border-color: #f44336;
+}
+
+.terminal-actions .close-btn:hover {
+  background: #f44336;
+  color: white;
+}
+
+.terminal-viewport {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.terminal-viewport canvas {
+  outline: none !important;
+}
+
+.terminal-viewport .xterm {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.terminal-viewport .xterm-viewport {
+  background-color: transparent !important;
+}
+
+.terminal-error {
+  padding: 8px;
+  background: #2d2d30;
+  color: #f44336;
+  font-size: 12px;
+  border-bottom: 1px solid #3e3e42;
+}

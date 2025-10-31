@@ -1,23 +1,17 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckSquare, GitBranch, FileText, Terminal } from "lucide-react";
+import { CheckSquare, GitBranch, FileText, Terminal as TerminalIcon } from "lucide-react";
 import { AgentService } from "@/lib/services/agentService";
 import { useAgent } from "@/contexts/AgentContext";
+import Terminal from "./Terminal";
 
 export const RightSidebar = () => {
   const [activeTab, setActiveTab] = useState("plan");
   const [width, setWidth] = useState(320); // 80 * 4 = 320px (w-80)
   const [isResizing, setIsResizing] = useState(false);
-  const [terminalInput, setTerminalInput] = useState("");
-  const [terminalHistory, setTerminalHistory] = useState([
-    { type: "output", text: "Welcome to Medusa Agent Terminal" },
-    { type: "output", text: "Commands are executed in the agent's container environment." },
-    { type: "output", text: "Type commands and press Enter to execute." },
-  ]);
   const [containerLogs, setContainerLogs] = useState<string[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const terminalInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { agents, selectedAgentId, isDeleting, isArchiving } = useAgent();
 
@@ -56,61 +50,6 @@ export const RightSidebar = () => {
     setIsResizing(false);
   }, []);
 
-  const handleTerminalCommand = async (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && terminalInput.trim()) {
-      const command = terminalInput.trim();
-      const newHistory = [
-        ...terminalHistory,
-        { type: "command", text: command },
-      ];
-
-      // Clear input immediately
-      setTerminalInput("");
-
-      // Show command in history
-      setTerminalHistory(newHistory);
-
-      // Execute real command if we have an active agent
-      const currentAgent = getCurrentAgent();
-      if (currentAgent && currentAgent.status !== 'Archived') {
-          try {
-            // Show loading indicator
-            const loadingHistory = [...newHistory, { type: "output", text: "Executing..." }];
-            setTerminalHistory(loadingHistory);
-
-            // Execute command in container
-            const output = await AgentService.executeTerminalCommand(currentAgent.id, command);
-
-            // Update with actual output
-            const finalHistory = [
-              ...newHistory,
-              { type: "output", text: output || "(no output)" }
-            ];
-            setTerminalHistory(finalHistory);
-          } catch (error) {
-            console.error('Failed to execute terminal command:', error);
-            const errorHistory = [
-              ...newHistory,
-              { type: "output", text: `Error: ${error instanceof Error ? error.message : 'Command failed'}` }
-            ];
-            setTerminalHistory(errorHistory);
-          }
-        } else {
-          // No active agent
-          const errorHistory = [
-            ...newHistory,
-            { type: "output", text: "Error: No active agent available" }
-          ];
-          setTerminalHistory(errorHistory);
-        }
-    }
-  };
-
-  const handleTerminalClick = () => {
-    if (terminalInputRef.current) {
-      terminalInputRef.current.focus();
-    }
-  };
 
   // Fetch container logs for the current agent
   useEffect(() => {
@@ -154,14 +93,6 @@ export const RightSidebar = () => {
     return () => clearInterval(interval);
   }, [getCurrentAgent, isDeleting, isArchiving]);
 
-  // Clear terminal history when agent changes
-  useEffect(() => {
-    setTerminalHistory([
-      { type: "output", text: "Welcome to Medusa Agent Terminal" },
-      { type: "output", text: "Commands are executed in the agent's container environment." },
-      { type: "output", text: "Type commands and press Enter to execute." },
-    ]);
-  }, [selectedAgentId]);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -233,7 +164,7 @@ export const RightSidebar = () => {
             value="terminal"
             className="cursor-pointer flex items-center justify-center gap-1 text-xs data-[state=active]:bg-background"
           >
-            <Terminal className="w-3 h-3" />
+            <TerminalIcon className="w-3 h-3" />
             {width > 280 && "Terminal"}
           </TabsTrigger>
         </TabsList>
@@ -349,51 +280,28 @@ export const RightSidebar = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="terminal" className="h-full m-0 p-4">
-            <div
-              className="h-full bg-black rounded-md p-4 font-mono text-sm overflow-y-auto cursor-text"
-              onClick={handleTerminalClick}
-            >
-              {/* Terminal history */}
-              <div className="space-y-1">
-                {terminalHistory.map((entry, index) => (
-                  <div key={index}>
-                    {entry.type === "command" ? (
-                      <div className="text-green-400">
-                        <span className="text-blue-400">user@medusa</span>
-                        <span className="text-white">:</span>
-                        <span className="text-purple-400">~</span>
-                        <span className="text-white">$ </span>
-                        <span className="text-white">{entry.text}</span>
-                      </div>
-                    ) : (
-                      <div className="text-gray-300 whitespace-pre-line ml-4">
-                        {entry.text}
-                      </div>
-                    )}
+          <TabsContent value="terminal" className="h-full m-0 p-0">
+            {getCurrentAgent() ? (
+              getCurrentAgent()!.status.toLowerCase() !== 'archived' ? (
+                <Terminal agentId={getCurrentAgent()!.id} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <TerminalIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Terminal not available</p>
+                    <p className="text-xs mt-1">Archived agents don't have active containers</p>
                   </div>
-                ))}
+                </div>
+              )
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <TerminalIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No agent selected</p>
+                  <p className="text-xs mt-1">Select an agent to open terminal</p>
+                </div>
               </div>
-
-              {/* Current input line */}
-              <div className="text-green-400 flex">
-                <span className="text-blue-400">user@medusa</span>
-                <span className="text-white">:</span>
-                <span className="text-purple-400">~</span>
-                <span className="text-white">$ </span>
-                <input
-                  ref={terminalInputRef}
-                  type="text"
-                  value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
-                  onKeyDown={handleTerminalCommand}
-                  className="bg-transparent border-none outline-none text-white flex-1 font-mono"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <span className="animate-pulse text-white">_</span>
-              </div>
-            </div>
+            )}
           </TabsContent>
         </div>
       </Tabs>

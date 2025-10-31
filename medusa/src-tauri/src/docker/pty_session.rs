@@ -52,15 +52,27 @@ impl AgentPtySession {
         let (input_tx, mut input_rx) = mpsc::unbounded_channel::<Vec<u8>>();
 
         // Docker output -> UI
+        let out_tx = output_tx.clone();
         let mut output_stream = hijack.0;
         tokio::spawn(async move {
             while let Some(item) = output_stream.next().await {
                 match item {
-                    Ok(bollard::container::LogOutput::StdOut { message })
-                    | Ok(bollard::container::LogOutput::StdErr { message }) => {
-                        let _ = output_tx.send(message.to_vec());
+                    Ok(log_output) => {
+                        let bytes = match log_output {
+                            bollard::container::LogOutput::StdOut { message } |
+                            bollard::container::LogOutput::StdErr { message } |
+                            bollard::container::LogOutput::StdIn { message } |
+                            bollard::container::LogOutput::Console { message } => {
+                                message
+                            }
+                        };
+                        if out_tx.send(bytes.to_vec()).is_err() {
+                            break;
+                        }
                     }
-                    _ => {}
+                    Err(e) => {
+                        break;
+                    }
                 }
             }
         });
@@ -85,13 +97,15 @@ impl AgentPtySession {
     }
 
     pub async fn resize(&self, rows: u16, cols: u16) -> Result<()> {
-        self.docker.resize_exec(
-            &self.exec_id,
-            bollard::exec::ResizeExecOptions {
-                height: rows,
-                width: cols,
-            },
-        ).await?;
+        self.docker
+            .resize_exec(
+                &self.exec_id,
+                bollard::exec::ResizeExecOptions {
+                    height: rows,
+                    width: cols,
+                },
+            )
+            .await?;
         Ok(())
     }
 
