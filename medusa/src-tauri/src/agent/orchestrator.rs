@@ -373,6 +373,22 @@ impl AgentOrchestrator {
         Ok(())
     }
 
+    /// Delete archived agent permanently
+    pub async fn delete_archived_agent(&self, agent_id: &str) -> Result<()> {
+        let workspace_id = self.find_archived_agent_workspace(agent_id).await
+            .ok_or_else(|| anyhow::anyhow!("Archived agent not found"))?;
+
+        info!("Deleting archived agent '{}'", agent_id);
+
+        // Remove archived agent from workspace
+        self.workspace_manager
+            .delete_archived_agent_in_workspace(&workspace_id, agent_id)
+            .await?;
+
+        info!("Successfully deleted archived agent {}", agent_id);
+        Ok(())
+    }
+
     // Helper method to find agent across workspaces
     async fn find_agent(&self, agent_id: &str) -> Option<AgentWithWorkspace> {
         let workspaces = self.workspace_manager.list_workspaces().await;
@@ -382,6 +398,17 @@ impl AgentOrchestrator {
                     agent: agent.clone(),
                     workspace_id: workspace.id().0.clone(),
                 });
+            }
+        }
+        None
+    }
+
+    // Helper method to find archived agent across workspaces
+    async fn find_archived_agent_workspace(&self, agent_id: &str) -> Option<String> {
+        let workspaces = self.workspace_manager.list_workspaces().await;
+        for workspace in workspaces {
+            if workspace.get_archived_agent(agent_id).is_some() {
+                return Some(workspace.id().0.clone());
             }
         }
         None

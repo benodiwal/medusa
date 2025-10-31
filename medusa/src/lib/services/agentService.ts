@@ -45,6 +45,13 @@ export class AgentService {
   }
 
   /**
+   * Delete an archived agent permanently
+   */
+  static async deleteArchivedAgent(agentId: string): Promise<void> {
+    await AgentAPI.deleteArchivedAgent(agentId);
+  }
+
+  /**
    * Get logs for an agent
    */
   static async getAgentLogs(agentId: string): Promise<string> {

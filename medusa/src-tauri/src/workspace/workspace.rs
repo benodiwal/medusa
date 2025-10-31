@@ -125,6 +125,14 @@ impl Workspace {
         self.archive_manager.get_archived(agent_id)
     }
 
+    pub fn delete_archived_agent(&mut self, agent_id: &str) -> Result<()> {
+        self.archive_manager.remove_archived(agent_id)
+            .ok_or_else(|| anyhow::anyhow!("Archived agent {} not found", agent_id))?;
+
+        self.metadata.update();
+        Ok(())
+    }
+
     // Listing methods
     pub fn list_active_agents(&self) -> Vec<&Agent> {
         self.agents.values().collect()

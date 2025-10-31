@@ -1,13 +1,15 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TooltipButton } from "@/components/ui/tooltip-button";
-import { Copy, MoreHorizontal, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Trash2, ArrowUpDown, ArchiveIcon } from "lucide-react";
 
 interface ConversationItemProps {
   title: string;
   subtitle: string;
   isActive?: boolean;
   onClick?: () => void;
+  onPairMode?: () => void;
   onCopyBranch?: () => void;
+  onArchive?: () => void;
   onDelete?: () => void;
 }
 
@@ -16,7 +18,9 @@ export const ConversationItem = ({
   subtitle,
   isActive = false,
   onClick,
+  onPairMode,
   onCopyBranch,
+  onArchive,
   onDelete
 }: ConversationItemProps) => {
   return (
@@ -35,6 +39,21 @@ export const ConversationItem = ({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {onPairMode && (
+            <TooltipButton
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPairMode?.();
+              }}
+              className="h-8 w-8 text-muted-foreground hover:bg-secondary"
+              tooltip="Start Pairing Mode"
+              tooltipSide="top"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+            </TooltipButton>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -56,6 +75,15 @@ export const ConversationItem = ({
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Branch Name
               </DropdownMenuItem>
+              {onArchive && (
+                <DropdownMenuItem
+                  onClick={onArchive}
+                  className="cursor-pointer text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground focus:bg-white/10 focus:text-sidebar-foreground"
+                >
+                  <ArchiveIcon className="w-4 h-4 mr-2" />
+                  Archive
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={onDelete}
                 className="cursor-pointer text-red-400 hover:bg-white/10 hover:text-red-400 focus:bg-white/10 focus:text-red-400"

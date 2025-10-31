@@ -221,6 +221,15 @@ impl WorkspaceManager {
         self.with_workspace_mut(workspace_id, |workspace| workspace.restore_agent(agent_id))
             .await
     }
+
+    pub async fn delete_archived_agent_in_workspace(
+        &self,
+        workspace_id: &str,
+        agent_id: &str,
+    ) -> Result<()> {
+        self.with_workspace_mut(workspace_id, |workspace| workspace.delete_archived_agent(agent_id))
+            .await
+    }
 }
 
 impl Default for WorkspaceManager {

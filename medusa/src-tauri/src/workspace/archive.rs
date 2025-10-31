@@ -136,4 +136,8 @@ impl ArchiveManager {
     pub fn count(&self) -> usize {
         self.archives.len()
     }
+
+    pub fn remove_archived(&mut self, agent_id: &str) -> Option<ArchivedAgent> {
+        self.archives.remove(agent_id)
+    }
 }

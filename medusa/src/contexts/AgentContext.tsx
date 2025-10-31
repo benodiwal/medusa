@@ -17,6 +17,7 @@ interface AgentActions {
   refreshAgents: () => Promise<void>;
   stopAgent: (agentId: string) => Promise<void>;
   deleteAgent: (agentId: string) => Promise<boolean>;
+  deleteArchivedAgent: (agentId: string) => Promise<boolean>;
   archiveAgent: (agentId: string, reason?: string) => Promise<boolean>;
   searchAgents: (query: string) => Promise<AgentResponse[]>;
   selectAgent: (agentId: string | null) => void;
@@ -158,6 +159,39 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setDeleting, setError, refreshAgents, state.selectedAgentId]);
 
+  const deleteArchivedAgent = useCallback(async (agentId: string) => {
+    try {
+      setDeleting(true);
+      setError(null);
+
+      // Delete the archived agent (this will permanently remove it)
+      await AgentService.deleteArchivedAgent(agentId);
+
+      // Clear the selected agent if it's the one being deleted
+      if (state.selectedAgentId === agentId) {
+        setState(prev => ({ ...prev, selectedAgentId: null }));
+      }
+
+      // Refresh agents to remove deleted agent from list
+      await refreshAgents();
+
+      // Return success so components can handle navigation
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete archived agent';
+      setError(errorMessage);
+      console.error('Delete archived agent error:', error);
+
+      // Refresh on error to ensure state consistency
+      await refreshAgents();
+
+      // Return false to indicate failure
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  }, [setDeleting, setError, refreshAgents, state.selectedAgentId]);
+
   const archiveAgent = useCallback(async (agentId: string, reason?: string) => {
     try {
       setArchiving(true);
@@ -218,6 +252,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     refreshAgents,
     stopAgent,
     deleteAgent,
+    deleteArchivedAgent,
     archiveAgent,
     searchAgents,
     selectAgent,

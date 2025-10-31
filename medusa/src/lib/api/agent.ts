@@ -57,6 +57,14 @@ export class AgentAPI {
     }
   }
 
+  static async deleteArchivedAgent(agentId: string): ApiResult<void> {
+    try {
+      await invoke<void>('delete_archived_agent', { agentId });
+    } catch (error) {
+      throw new Error(`Failed to delete archived agent: ${error}`);
+    }
+  }
+
   static async getAgentLogs(agentId: string): ApiResult<string> {
     try {
       const logs = await invoke<string>('get_agent_logs', { agentId });

@@ -43,6 +43,7 @@ export const ChatSidebar = () => {
     error: agentError,
     archiveAgent,
     deleteAgent,
+    deleteArchivedAgent,
     selectAgent,
   } = useAgent();
 
@@ -106,6 +107,17 @@ export const ChatSidebar = () => {
       }
     } catch (error) {
       console.error("Failed to delete agent:", error);
+    }
+  };
+
+  const handleDeleteArchivedAgent = async (agentId: string) => {
+    try {
+      const success = await deleteArchivedAgent(agentId);
+      if (success) {
+        navigate('/app');
+      }
+    } catch (error) {
+      console.error("Failed to delete archived agent:", error);
     }
   };
 
@@ -292,7 +304,7 @@ export const ChatSidebar = () => {
                         title={agent.name}
                         subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
                         isActive={false}
-                        onDelete={() => handleDeleteAgent(agent.id)}
+                        onDelete={() => handleDeleteArchivedAgent(agent.id)}
                         onClick={() => {
                           selectAgent(agent.id);
                           navigate('/agent');
@@ -312,6 +324,11 @@ export const ChatSidebar = () => {
                         title={agent.name}
                         subtitle={`${new Date(agent.created_at).toLocaleDateString()} • ${agent.status}`}
                         isActive={agent.status === 'running'}
+                        onPairMode={() => {
+                          // TODO: Implement pairing mode functionality
+                          console.log('Start pairing mode for agent:', agent.id);
+                        }}
+                        onArchive={() => handleArchiveAgent(agent.id)}
                         onDelete={() => handleDeleteAgent(agent.id)}
                         onClick={() => {
                           selectAgent(agent.id);
