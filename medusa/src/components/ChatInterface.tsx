@@ -1,15 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAgent } from "@/contexts/AgentContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Image,
   Paperclip,
-  Code,
   Bot,
   ChevronDown,
   Check,
@@ -19,19 +18,59 @@ import {
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("sonnet");
+  const [chatHistory, setChatHistory] = useState<Array<{type: 'user' | 'assistant', text: string}>>([]);
   const { activeWorkspace } = useWorkspace();
-  const { createAgent, isLoading: isCreatingAgent, error: agentError } = useAgent();
+  const { createAgent, isLoading: isCreatingAgent, agents, selectedAgentId } = useAgent();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine if we're on the agent page
+  const isAgentPage = location.pathname === '/agent';
+
+  // Get current agent if on agent page
+  const getCurrentAgent = () => {
+    if (!isAgentPage || !agents || agents.length === 0) return null;
+
+    if (selectedAgentId) {
+      return agents.find(agent => agent.id === selectedAgentId) || null;
+    }
+
+    // Fallback to most recent active agent
+    const activeAgents = agents.filter(agent => agent.status.toLowerCase() !== 'archived');
+    return activeAgents.length > 0 ? activeAgents[activeAgents.length - 1] : null;
+  };
+
+  const currentAgent = getCurrentAgent();
 
   const handleSubmit = async () => {
     if (!message.trim()) return;
 
-    try {
-      const agentId = await createAgent(message.trim(), selectedModel);
+    if (isAgentPage) {
+      // On agent page - send message to existing agent
+      if (!currentAgent) {
+        console.error('No active agent to send message to');
+        return;
+      }
+
+      // Add message to chat history for now
+      // TODO: In the future, this should send the message to the agent via API
+      setChatHistory(prev => [
+        ...prev,
+        { type: 'user', text: message.trim() },
+        { type: 'assistant', text: 'Agent interaction coming soon. This agent is currently running autonomously.' }
+      ]);
       setMessage("");
-      navigate('/agent');
-    } catch (error) {
-      console.error('Failed to create agent:', error);
+
+      console.log(`Would send message to agent ${currentAgent.id}: ${message.trim()}`);
+    } else {
+      // On home page - create new agent
+      try {
+        await createAgent(message.trim(), selectedModel);
+        setMessage("");
+        navigate('/agent');
+      } catch (error) {
+        console.error('Failed to create agent:', error);
+      }
     }
   };
 
@@ -47,14 +86,39 @@ export const ChatInterface = () => {
       <div className="flex-1 flex flex-col h-full bg-background">
       {/* Main Content */}
       <main className="relative flex-1 flex items-center justify-center p-6 bg-background overflow-hidden">
+        {isAgentPage && chatHistory.length > 0 ? (
+          // Show chat history on agent page
+          <div className="flex-1 flex flex-col w-full max-w-3xl">
+            <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+              {chatHistory.map((msg, index) => (
+                <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-2xl p-3 rounded-lg ${
+                    msg.type === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-foreground'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="relative z-10 w-full max-w-3xl space-y-6">
           {/* Title Section */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-semibold text-foreground">
-              {activeWorkspace?.name || "No workspace"}
+              {isAgentPage && currentAgent
+                ? `Agent: ${currentAgent.name}`
+                : (activeWorkspace?.name || "No workspace")
+              }
             </h1>
             <p className="text-sm text-muted-foreground">
-              {activeWorkspace?.repo_path || "No repository selected"}
+              {isAgentPage && currentAgent
+                ? `Task: ${currentAgent.task}`
+                : (activeWorkspace?.repo_path || "No repository selected")
+              }
             </p>
           </div>
 
@@ -65,9 +129,13 @@ export const ChatInterface = () => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe your task..."
+                placeholder={
+                  isAgentPage
+                    ? "Send a message to the agent (Coming soon)..."
+                    : "Describe your task..."
+                }
                 className="min-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
-                disabled={isCreatingAgent}
+                disabled={isCreatingAgent || (isAgentPage && !currentAgent)}
               />
 
               {/* Toolbar */}
@@ -94,7 +162,8 @@ export const ChatInterface = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Model Selector */}
+                  {/* Model Selector - Only show on home page */}
+                  {!isAgentPage && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted rounded-md hover:bg-muted/80 transition-colors">
@@ -128,10 +197,12 @@ export const ChatInterface = () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
 
                   <button
                     onClick={handleSubmit}
-                    disabled={!message.trim() || isCreatingAgent}
+                    disabled={!message.trim() || isCreatingAgent || (isAgentPage && !currentAgent)}
+                    title={isAgentPage ? "Send message to agent" : "Create new agent"}
                     className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                     <ArrowRight className="w-4 h-4" />
                   </button>

@@ -6,7 +6,7 @@ import { TooltipButton } from "@/components/ui/tooltip-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { ArchiveIcon, Check, ChevronDown, HelpCircle, Home, Plus, Search, Settings, Sidebar, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 import { CreateNewAgentModal } from "./CreateNewAgentModal";
 import { SearchAgentsModal } from "./SearchAgentsModal";
@@ -20,6 +20,7 @@ export const ChatSidebar = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Workspace management
   const {
@@ -52,6 +53,11 @@ export const ChatSidebar = () => {
     agent.status.toLowerCase() === 'archived'
   );
 
+  // Determine if New Agent button should be disabled
+  const isOnHomePage = location.pathname === '/app' || location.pathname === '/';
+  const hasNoWorkspace = !activeWorkspace;
+  const shouldDisableNewAgent = isOnHomePage || hasNoWorkspace;
+
 
   // Handle workspace errors
   useEffect(() => {
@@ -66,7 +72,9 @@ export const ChatSidebar = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
         event.preventDefault();
-        setCreateModalOpen(true);
+        if (!shouldDisableNewAgent) {
+          setCreateModalOpen(true);
+        }
       }
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
@@ -76,7 +84,7 @@ export const ChatSidebar = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [shouldDisableNewAgent]);
 
   const handleArchiveAgent = async (agentId: string) => {
     try {
@@ -237,7 +245,8 @@ export const ChatSidebar = () => {
           <div className="p-1">
             <Button
               onClick={() => setCreateModalOpen(true)}
-              className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border">
+              disabled={shouldDisableNewAgent}
+              className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-foreground border border-sidebar-border disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-sidebar-accent">
             <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               <Plus className="mr-[10px]"/>
