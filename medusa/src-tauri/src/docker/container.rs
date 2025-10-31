@@ -1,5 +1,9 @@
 // src-tauri/src/docker/container.rs
 
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
 use anyhow::Result;
 #[allow(deprecated)]
 use bollard::container::{
@@ -11,14 +15,20 @@ use bollard::models::{HostConfig, Mount, MountTypeEnum};
 use bollard::Docker;
 use futures_util::stream::StreamExt;
 
+use crate::docker::pty_session::AgentPtySession;
+
 pub struct ContainerManager {
     docker: Docker,
+    pty_sessions: Arc<RwLock<HashMap<String, Arc<AgentPtySession>>>>,
 }
 
 impl ContainerManager {
     pub fn new() -> Result<Self> {
         let docker = Docker::connect_with_local_defaults()?;
-        Ok(Self { docker })
+        Ok(Self {
+            docker,
+            pty_sessions: Arc::new(RwLock::new(HashMap::new())),
+        })
     }
 
     /// Create container for agent with git repo mounted
@@ -77,6 +87,8 @@ impl ContainerManager {
 
     #[allow(deprecated)]
     pub async fn stop_container(&self, container_id: &str) -> Result<()> {
+        self.close_pty_session(container_id).await;
+
         self.docker
             .stop_container(container_id, None::<StopContainerOptions>)
             .await?;
@@ -85,6 +97,8 @@ impl ContainerManager {
 
     #[allow(deprecated)]
     pub async fn remove_container(&self, container_id: &str) -> Result<()> {
+        self.close_pty_session(container_id).await;
+
         let options = RemoveContainerOptions {
             force: true,
             v: true, // Remove volumes
@@ -170,5 +184,61 @@ impl ContainerManager {
         }
 
         Ok(logs)
+    }
+
+    pub async fn get_or_create_pty_session(
+        &self,
+        container_id: &str,
+    ) -> Result<Arc<AgentPtySession>> {
+        let mut sessions = self.pty_sessions.write().await;
+
+        if let Some(session) = sessions.get(container_id) {
+            return Ok(Arc::clone(session));
+        }
+
+        // Create new PTY session
+        let session = AgentPtySession::open(self.docker.clone(), container_id).await?;
+        let session_arc = Arc::new(session);
+
+        sessions.insert(container_id.to_string(), Arc::clone(&session_arc));
+
+        Ok(session_arc)
+    }
+
+    pub async fn get_pty_session(&self, container_id: &str) -> Option<Arc<AgentPtySession>> {
+        let sessions = self.pty_sessions.read().await;
+        sessions.get(container_id).map(Arc::clone)
+    }
+
+    pub async fn close_pty_session(&self, container_id: &str) {
+        let mut sessions = self.pty_sessions.write().await;
+        sessions.remove(container_id);
+    }
+
+    pub async fn resize_pty(&self, container_id: &str, rows: u16, cols: u16) -> Result<()> {
+        if let Some(session) = self.get_pty_session(container_id).await {
+            session.resize(rows, cols).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn send_to_pty(&self, container_id: &str, data: &[u8]) -> Result<()> {
+        let session = self
+            .get_pty_session(container_id)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("No active PTY session for container"))?;
+
+        session.write(data)?;
+        Ok(())
+    }
+
+    pub async fn try_recv_from_pty(&self, container_id: &str) -> Option<Vec<u8>> {
+        let session = self.get_pty_session(container_id).await?;
+        session.try_recv_output()
+    }
+
+    pub async fn recv_from_pty(&self, container_id: &str) -> Option<Vec<u8>> {
+        let session = self.get_pty_session(container_id).await?;
+        session.recv_output().await
     }
 }

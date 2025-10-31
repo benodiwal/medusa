@@ -1,27 +1,28 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-pub mod workspace;
 pub mod agent;
 pub mod commands;
+pub mod db; // SQLite
 pub mod docker;
 pub mod git;
-pub mod db; // SQLite
-pub mod state;
 pub mod logging;
+pub mod state;
+pub mod workspace;
 
 pub use state::AppState;
 
 use db::{config::DatabaseConfig, migrations};
-use tauri::Manager;
 use std::sync::Arc;
+use tauri::Manager;
 
-// Import our command modules
-use commands::{
-    create_workspace, set_active_workspace, get_active_workspace, list_workspaces, delete_workspace,
-    create_agent, list_agents, get_agent, stop_agent, delete_agent, delete_archived_agent, archive_agent, get_agent_logs, execute_terminal_command, search_agents
-};
 use agent::orchestrator::AgentOrchestrator;
-use workspace::WorkspaceManager;
+use commands::{
+    archive_agent, create_agent, create_workspace, delete_agent, delete_archived_agent,
+    delete_workspace, execute_terminal_command, get_active_workspace, get_agent, get_agent_logs,
+    list_agents, list_workspaces, search_agents, set_active_workspace, stop_agent,
+};
 use docker::ContainerManager;
+use workspace::WorkspaceManager;
+
+use crate::commands::{close_terminal, open_terminal, resize_terminal, send_terminal_input, start_terminal_stream};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,7 +31,11 @@ pub fn run() {
     tracing::info!("Starting Medusa application");
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::new().add_migrations(&DatabaseConfig::default().url, migrations::all()).build())
+        .plugin(
+            tauri_plugin_sql::Builder::new()
+                .add_migrations(&DatabaseConfig::default().url, migrations::all())
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -50,13 +55,19 @@ pub fn run() {
             archive_agent,
             get_agent_logs,
             execute_terminal_command,
-            search_agents
+            search_agents,
+            // Agent PTY
+            open_terminal,
+            close_terminal,
+            send_terminal_input,
+            resize_terminal,
+            start_terminal_stream,
         ])
         .setup(|app| {
             // Initialize managers and orchestrator
             let container_manager = Arc::new(
                 ContainerManager::new()
-                    .map_err(|e| format!("Failed to initialize ContainerManager: {}", e))?
+                    .map_err(|e| format!("Failed to initialize ContainerManager: {}", e))?,
             );
             let workspace_manager = Arc::new(WorkspaceManager::new());
             let agent_orchestrator = Arc::new(AgentOrchestrator::new(

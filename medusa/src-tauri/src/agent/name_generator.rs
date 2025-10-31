@@ -24,7 +24,6 @@ const NOUNS: &[&str] = &[
     "melody", "harmony", "rhythm", "symphony", "whisper", "echo", "cascade", "horizon"
 ];
 
-/// Generate a cute, memorable name for an agent
 /// Format: adjective-noun (e.g., "clever-panda", "swift-falcon")
 pub fn generate_agent_name() -> String {
     let mut rng = thread_rng();
@@ -35,8 +34,7 @@ pub fn generate_agent_name() -> String {
     format!("{}-{}", adjective, noun)
 }
 
-/// Generate a unique agent name with retry logic
-/// Checks against existing names to ensure uniqueness
+#[allow(unused)]
 pub fn generate_unique_agent_name(existing_names: &[String]) -> String {
     let max_attempts = 100;
 
@@ -53,7 +51,7 @@ pub fn generate_unique_agent_name(existing_names: &[String]) -> String {
     format!("{}-{}", base_name, suffix)
 }
 
-/// Check if a name is valid (alphanumeric with hyphens, no spaces)
+#[allow(unused)]
 pub fn is_valid_agent_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 50
@@ -62,13 +60,11 @@ pub fn is_valid_agent_name(name: &str) -> bool {
         && !name.ends_with('-')
 }
 
-/// Create a branch name from agent name
 /// Format: medusa/{agent-name}
 pub fn create_branch_name(agent_name: &str) -> String {
     format!("medusa/{}", agent_name)
 }
 
-/// Create a container name from agent name and ID
 /// Format: medusa-{agent-name}-{short-id}
 pub fn create_container_name(agent_name: &str, agent_id: &str) -> String {
     // Take first 8 chars of the UUID for brevity

@@ -1,12 +1,13 @@
 use crate::agent::orchestrator::AgentOrchestrator;
 use crate::agent::types::AgentConfig;
+use crate::docker::ContainerManager;
 use crate::workspace::types::{WorkspaceConfig, WorkspaceId};
 use crate::workspace::WorkspaceManager;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Emitter, State, Window};
 use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -168,7 +169,6 @@ pub async fn delete_workspace(
 }
 
 // Agent Commands
-
 #[tauri::command]
 pub async fn create_agent(
     request: CreateAgentRequest,
@@ -402,4 +402,152 @@ pub async fn search_agents(
             Err(format!("Failed to search agents: {}", e))
         }
     }
+}
+
+#[tauri::command]
+pub async fn open_terminal(
+    agent_id: String,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    info!("Opening terminal for agent: {}", agent_id);
+
+    // Get the agent to find its container
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    // Create PTY session
+    match container_manager
+        .get_or_create_pty_session(&agent.container_id)
+        .await
+    {
+        Ok(_) => {
+            info!("Successfully opened terminal for agent: {}", agent_id);
+            Ok(())
+        }
+        Err(e) => {
+            error!("Failed to open terminal for agent '{}': {}", agent_id, e);
+            Err(format!("Failed to open terminal: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn close_terminal(
+    agent_id: String,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    info!("Closing terminal for agent: {}", agent_id);
+
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    container_manager.close_pty_session(&agent.container_id).await;
+    
+    info!("Successfully closed terminal for agent: {}", agent_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn send_terminal_input(
+    agent_id: String,
+    data: Vec<u8>,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    match container_manager
+        .send_to_pty(&agent.container_id, &data)
+        .await
+    {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("Failed to send input to terminal for agent '{}': {}", agent_id, e);
+            Err(format!("Failed to send input: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn recv_terminal_output(
+    agent_id: String,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<Option<Vec<u8>>, String> {
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    // Use non-blocking receive
+    let output = container_manager
+        .try_recv_from_pty(&agent.container_id)
+        .await;
+
+    Ok(output)
+}
+
+#[tauri::command]
+pub async fn resize_terminal(
+    agent_id: String,
+    rows: u16,
+    cols: u16,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    info!("Resizing terminal for agent {} to {}x{}", agent_id, rows, cols);
+
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    match container_manager
+        .resize_pty(&agent.container_id, rows, cols)
+        .await
+    {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            error!("Failed to resize terminal for agent '{}': {}", agent_id, e);
+            Err(format!("Failed to resize terminal: {}", e))
+        }
+    }
+}
+
+// Stream terminal output using Tauri events (better for real-time)
+#[tauri::command]
+pub async fn start_terminal_stream(
+    agent_id: String,
+    window: Window,
+    container_manager: State<'_, Arc<ContainerManager>>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    info!("Starting terminal stream for agent: {}", agent_id);
+
+    let agent = agent_orchestrator.get_agent(&agent_id).await
+        .ok_or_else(|| "Agent not found".to_string())?;
+
+    let container_id = agent.container_id.clone();
+    let agent_id_clone = agent_id.clone();
+    let container_manager_clone = container_manager.inner().clone();
+
+    // Spawn a task to continuously stream output
+    tokio::spawn(async move {
+        loop {
+            if let Some(output) = container_manager_clone
+                .recv_from_pty(&container_id)
+                .await
+            {
+                // Emit event to frontend
+                let _ = window.emit(
+                    &format!("terminal-output-{}", agent_id_clone),
+                    output,
+                );
+            } else {
+                // Session closed
+                break;
+            }
+        }
+    });
+
+    Ok(())
 }
