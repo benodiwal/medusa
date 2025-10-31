@@ -290,6 +290,25 @@ pub async fn archive_agent(
 }
 
 #[tauri::command]
+pub async fn delete_agent(
+    agent_id: String,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<(), String> {
+    info!("Deleting agent: {}", agent_id);
+
+    match agent_orchestrator.delete_agent(&agent_id).await {
+        Ok(()) => {
+            info!("Successfully deleted agent: {}", agent_id);
+            Ok(())
+        }
+        Err(e) => {
+            error!("Failed to delete agent '{}': {}", agent_id, e);
+            Err(format!("Failed to delete agent: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
 pub async fn get_agent_logs(
     agent_id: String,
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,

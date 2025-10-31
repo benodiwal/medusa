@@ -39,9 +39,10 @@ export const ChatSidebar = () => {
     agents,
     isLoading: isAgentLoading,
     isArchiving,
+    isDeleting,
     error: agentError,
     archiveAgent,
-    stopAgent,
+    deleteAgent,
     selectAgent,
   } = useAgent();
 
@@ -96,9 +97,12 @@ export const ChatSidebar = () => {
 
   const handleDeleteAgent = async (agentId: string) => {
     try {
-      await stopAgent(agentId);
+      const success = await deleteAgent(agentId);
+      if (success) {
+        navigate('/app');
+      }
     } catch (error) {
-      console.error("Failed to stop agent:", error);
+      console.error("Failed to delete agent:", error);
     }
   };
 
@@ -125,6 +129,7 @@ export const ChatSidebar = () => {
   return (
     <>
       <LoadingOverlay isLoading={isArchiving} message="Archiving agent..." />
+      <LoadingOverlay isLoading={isDeleting} message="Deleting agent..." />
       <TooltipProvider>
       <aside
         className={`relative h-screen transition-all duration-300 ${

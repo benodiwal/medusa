@@ -19,7 +19,7 @@ export const RightSidebar = () => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const { agents, selectedAgentId } = useAgent();
+  const { agents, selectedAgentId, isDeleting, isArchiving } = useAgent();
 
   // Get the current agent based on selectedAgentId or fallback to most recent
   const getCurrentAgent = useCallback(() => {
@@ -115,6 +115,11 @@ export const RightSidebar = () => {
   // Fetch container logs for the current agent
   useEffect(() => {
     const fetchLogs = async () => {
+      // Don't fetch logs if we're in the middle of deleting or archiving
+      if (isDeleting || isArchiving) {
+        return;
+      }
+
       const currentAgent = getCurrentAgent();
       if (currentAgent && currentAgent.status !== 'Archived') {
         setIsLoadingLogs(true);
@@ -139,11 +144,15 @@ export const RightSidebar = () => {
     // Initial fetch
     fetchLogs();
 
-    // Set up polling interval for live logs
-    const interval = setInterval(fetchLogs, 5000); // Poll every 5 seconds
+    // Set up polling interval for live logs (skip if deleting/archiving)
+    const interval = setInterval(() => {
+      if (!isDeleting && !isArchiving) {
+        fetchLogs();
+      }
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [getCurrentAgent]);
+  }, [getCurrentAgent, isDeleting, isArchiving]);
 
   // Clear terminal history when agent changes
   useEffect(() => {

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useAgent } from "@/contexts/AgentContext";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { AgentResponse } from "@/lib/api/types";
 
@@ -12,8 +13,9 @@ interface AgentHeaderProps {
 }
 
 export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) => {
-  const { agents, selectedAgentId, isArchiving, archiveAgent, stopAgent } = useAgent();
+  const { agents, selectedAgentId, isArchiving, isDeleting, archiveAgent, deleteAgent } = useAgent();
   const [currentAgent, setCurrentAgent] = useState<AgentResponse | null>(null);
+  const navigate = useNavigate();
 
   // Use the selected agent or fallback to most recent
   useEffect(() => {
@@ -54,9 +56,12 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
   const handleDelete = async () => {
     if (currentAgent) {
       try {
-        await stopAgent(currentAgent.id);
+        const success = await deleteAgent(currentAgent.id);
+        if (success) {
+          navigate('/app');
+        }
       } catch (error) {
-        console.error('Failed to stop agent:', error);
+        console.error('Failed to delete agent:', error);
       }
     }
   };
@@ -64,6 +69,7 @@ export const AgentHeader = ({ sidebarOpen, onToggleSidebar }: AgentHeaderProps) 
   return (
     <>
       <LoadingOverlay isLoading={isArchiving} message="Archiving agent..." />
+      <LoadingOverlay isLoading={isDeleting} message="Deleting agent..." />
       <header className="h-12 bg-card border-b border-border flex items-center justify-between px-4">
       {/* Left side */}
       <div className="flex items-center gap-3">

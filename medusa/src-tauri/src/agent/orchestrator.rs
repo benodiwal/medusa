@@ -138,6 +138,34 @@ impl AgentOrchestrator {
         Ok(())
     }
 
+    /// Delete agent permanently with container cleanup
+    pub async fn delete_agent(&self, agent_id: &str) -> Result<()> {
+        let agent = self.find_agent(agent_id).await
+            .ok_or_else(|| anyhow::anyhow!("Agent not found"))?;
+
+        info!("Deleting agent '{}' ({})", agent.agent.name, agent_id);
+
+        // Stop and remove container
+        if let Err(e) = self.container_manager.stop_container(agent.container_id()).await {
+            warn!("Failed to stop container {} for agent {}: {}", agent.container_id(), agent_id, e);
+        }
+
+        if let Err(e) = self.container_manager.remove_container(agent.container_id()).await {
+            warn!("Failed to remove container {} for agent {}: {}", agent.container_id(), agent_id, e);
+        }
+
+        // Remove agent from workspace entirely
+        self.workspace_manager
+            .with_workspace_mut(agent.workspace_id(), |workspace| {
+                workspace.remove_agent(agent_id);
+                Ok(())
+            })
+            .await?;
+
+        info!("Successfully deleted agent {}", agent_id);
+        Ok(())
+    }
+
     /// Complete cleanup - archive agent and clean up all resources
     pub async fn cleanup_agent(&self, agent_id: &str) -> Result<()> {
         self.archive_agent(agent_id, "Manual cleanup".to_string()).await

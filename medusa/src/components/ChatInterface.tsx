@@ -81,44 +81,113 @@ export const ChatInterface = () => {
     }
   };
 
+  if (isAgentPage) {
+    // Agent page layout - chat at bottom
+    return (
+      <TooltipProvider>
+        <div className="flex-1 flex flex-col h-full bg-background">
+          {/* Chat History Area */}
+          <div className="flex-1 flex flex-col p-6 overflow-hidden">
+            {/* Title Section */}
+            <div className="text-center space-y-2 mb-6">
+              <h1 className="text-2xl font-semibold text-foreground">
+                {currentAgent ? `Agent: ${currentAgent.name}` : "No Agent"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {currentAgent ? `Task: ${currentAgent.task}` : "No agent selected"}
+              </p>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+              {chatHistory.length > 0 ? (
+                chatHistory.map((msg, index) => (
+                  <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-2xl p-3 rounded-lg ${
+                      msg.type === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-foreground'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <p>Start a conversation with the agent</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Input Area - Fixed at bottom */}
+          <div className="border-t border-border bg-card p-4">
+            <div className="w-full max-w-3xl mx-auto">
+              <div className="bg-background border border-border rounded-lg overflow-hidden shadow-sm">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Send a message to the agent (Coming soon)..."
+                  className="min-h-[80px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
+                  disabled={isCreatingAgent || !currentAgent}
+                />
+
+                {/* Toolbar */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background">
+                  <div className="flex items-center gap-2">
+                    <TooltipButton
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:bg-secondary"
+                      tooltip="Attach files"
+                      tooltipSide="top"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </TooltipButton>
+                    <TooltipButton
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:bg-secondary"
+                      tooltip="Attach images"
+                      tooltipSide="top"
+                    >
+                      <Image className="w-4 h-4" />
+                    </TooltipButton>
+                  </div>
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!message.trim() || isCreatingAgent || !currentAgent}
+                    title="Send message to agent"
+                    className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Home page layout - centered
   return (
     <TooltipProvider>
       <div className="flex-1 flex flex-col h-full bg-background">
       {/* Main Content */}
       <main className="relative flex-1 flex items-center justify-center p-6 bg-background overflow-hidden">
-        {isAgentPage && chatHistory.length > 0 ? (
-          // Show chat history on agent page
-          <div className="flex-1 flex flex-col w-full max-w-3xl">
-            <div className="flex-1 overflow-y-auto mb-4 space-y-4">
-              {chatHistory.map((msg, index) => (
-                <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-2xl p-3 rounded-lg ${
-                    msg.type === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         <div className="relative z-10 w-full max-w-3xl space-y-6">
           {/* Title Section */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-semibold text-foreground">
-              {isAgentPage && currentAgent
-                ? `Agent: ${currentAgent.name}`
-                : (activeWorkspace?.name || "No workspace")
-              }
+              {activeWorkspace?.name || "No workspace"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isAgentPage && currentAgent
-                ? `Task: ${currentAgent.task}`
-                : (activeWorkspace?.repo_path || "No repository selected")
-              }
+              {activeWorkspace?.repo_path || "No repository selected"}
             </p>
           </div>
 
@@ -129,13 +198,9 @@ export const ChatInterface = () => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={
-                  isAgentPage
-                    ? "Send a message to the agent (Coming soon)..."
-                    : "Describe your task..."
-                }
+                placeholder="Describe your task..."
                 className="min-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
-                disabled={isCreatingAgent || (isAgentPage && !currentAgent)}
+                disabled={isCreatingAgent}
               />
 
               {/* Toolbar */}
@@ -162,8 +227,7 @@ export const ChatInterface = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Model Selector - Only show on home page */}
-                  {!isAgentPage && (
+                  {/* Model Selector */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted rounded-md hover:bg-muted/80 transition-colors">
@@ -197,12 +261,11 @@ export const ChatInterface = () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  )}
 
                   <button
                     onClick={handleSubmit}
-                    disabled={!message.trim() || isCreatingAgent || (isAgentPage && !currentAgent)}
-                    title={isAgentPage ? "Send message to agent" : "Create new agent"}
+                    disabled={!message.trim() || isCreatingAgent}
+                    title="Create new agent"
                     className="cursor-pointer h-8 w-8 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                     <ArrowRight className="w-4 h-4" />
                   </button>

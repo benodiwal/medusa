@@ -38,6 +38,13 @@ export class AgentService {
   }
 
   /**
+   * Delete an agent permanently
+   */
+  static async deleteAgent(agentId: string): Promise<void> {
+    await AgentAPI.deleteAgent(agentId);
+  }
+
+  /**
    * Get logs for an agent
    */
   static async getAgentLogs(agentId: string): Promise<string> {

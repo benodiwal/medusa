@@ -49,6 +49,14 @@ export class AgentAPI {
     }
   }
 
+  static async deleteAgent(agentId: string): ApiResult<void> {
+    try {
+      await invoke<void>('delete_agent', { agentId });
+    } catch (error) {
+      throw new Error(`Failed to delete agent: ${error}`);
+    }
+  }
+
   static async getAgentLogs(agentId: string): ApiResult<string> {
     try {
       const logs = await invoke<string>('get_agent_logs', { agentId });

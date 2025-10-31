@@ -35,4 +35,5 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rand = "0.8"
+portable-pty = "0.9.0"
 

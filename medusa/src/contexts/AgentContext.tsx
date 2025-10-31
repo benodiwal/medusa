@@ -6,6 +6,7 @@ import type { CreateAgentRequest, AgentResponse } from '@/lib/api/types';
 interface AgentState {
   isLoading: boolean;
   isArchiving: boolean;
+  isDeleting: boolean;
   error: string | null;
   agents: AgentResponse[];
   selectedAgentId: string | null;
@@ -15,6 +16,7 @@ interface AgentActions {
   createAgent: (taskDescription: string, model?: string) => Promise<string>;
   refreshAgents: () => Promise<void>;
   stopAgent: (agentId: string) => Promise<void>;
+  deleteAgent: (agentId: string) => Promise<boolean>;
   archiveAgent: (agentId: string, reason?: string) => Promise<void>;
   searchAgents: (query: string) => Promise<AgentResponse[]>;
   selectAgent: (agentId: string | null) => void;
@@ -29,6 +31,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AgentState>({
     isLoading: false,
     isArchiving: false,
+    isDeleting: false,
     error: null,
     agents: [],
     selectedAgentId: null,
@@ -42,6 +45,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
   const setArchiving = useCallback((archiving: boolean) => {
     setState(prev => ({ ...prev, isArchiving: archiving }));
+  }, []);
+
+  const setDeleting = useCallback((deleting: boolean) => {
+    setState(prev => ({ ...prev, isDeleting: deleting }));
   }, []);
 
   const setError = useCallback((error: string | null) => {
@@ -118,6 +125,39 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setLoading, setError, refreshAgents]);
 
+  const deleteAgent = useCallback(async (agentId: string) => {
+    try {
+      setDeleting(true);
+      setError(null);
+
+      // Delete the agent (this will stop and remove completely)
+      await AgentService.deleteAgent(agentId);
+
+      // Clear the selected agent if it's the one being deleted
+      if (state.selectedAgentId === agentId) {
+        setState(prev => ({ ...prev, selectedAgentId: null }));
+      }
+
+      // Refresh agents to remove deleted agent from list
+      await refreshAgents();
+
+      // Return success so components can handle navigation
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete agent';
+      setError(errorMessage);
+      console.error('Delete agent error:', error);
+
+      // Refresh on error to ensure state consistency
+      await refreshAgents();
+
+      // Return false to indicate failure
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  }, [setDeleting, setError, refreshAgents, state.selectedAgentId]);
+
   const archiveAgent = useCallback(async (agentId: string, reason?: string) => {
     try {
       setArchiving(true);
@@ -166,6 +206,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     createAgent,
     refreshAgents,
     stopAgent,
+    deleteAgent,
     archiveAgent,
     searchAgents,
     selectAgent,

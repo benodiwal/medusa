@@ -17,7 +17,7 @@ use std::sync::Arc;
 // Import our command modules
 use commands::{
     create_workspace, set_active_workspace, get_active_workspace, list_workspaces, delete_workspace,
-    create_agent, list_agents, get_agent, stop_agent, archive_agent, get_agent_logs, execute_terminal_command, search_agents
+    create_agent, list_agents, get_agent, stop_agent, delete_agent, archive_agent, get_agent_logs, execute_terminal_command, search_agents
 };
 use agent::orchestrator::AgentOrchestrator;
 use workspace::WorkspaceManager;
@@ -45,6 +45,7 @@ pub fn run() {
             list_agents,
             get_agent,
             stop_agent,
+            delete_agent,
             archive_agent,
             get_agent_logs,
             execute_terminal_command,
