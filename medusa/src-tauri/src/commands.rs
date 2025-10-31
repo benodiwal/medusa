@@ -327,3 +327,41 @@ pub async fn execute_terminal_command(
         }
     }
 }
+
+#[tauri::command]
+pub async fn search_agents(
+    query: String,
+    workspace_id: Option<String>,
+    agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
+) -> Result<Vec<AgentResponse>, String> {
+    info!("Searching agents with query: '{}'", query);
+
+    let result = if let Some(workspace_id) = workspace_id {
+        agent_orchestrator.search_agents_in_workspace(&workspace_id, &query).await
+    } else {
+        agent_orchestrator.search_agents(&query).await
+    };
+
+    match result {
+        Ok(agents) => {
+            let responses: Vec<AgentResponse> = agents
+                .into_iter()
+                .map(|agent| AgentResponse {
+                    id: agent.id.0,
+                    name: agent.name,
+                    branch_name: agent.branch_name,
+                    container_id: agent.container_id,
+                    task: agent.task,
+                    status: format!("{:?}", agent.status),
+                    created_at: agent.created_at.to_rfc3339(),
+                })
+                .collect();
+            info!("Found {} agents matching query '{}'", responses.len(), query);
+            Ok(responses)
+        }
+        Err(e) => {
+            error!("Failed to search agents: {}", e);
+            Err(format!("Failed to search agents: {}", e))
+        }
+    }
+}

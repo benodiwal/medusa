@@ -181,6 +181,78 @@ impl AgentOrchestrator {
         Ok(agents)
     }
 
+    /// Search agents by name, task, or other criteria
+    pub async fn search_agents(&self, query: &str) -> Result<Vec<crate::agent::types::Agent>> {
+        let all_agents = self.list_agents().await?;
+
+        if query.trim().is_empty() {
+            return Ok(all_agents);
+        }
+
+        let query_lower = query.to_lowercase();
+
+        let filtered_agents = all_agents
+            .into_iter()
+            .filter(|agent| {
+                // Search in agent name
+                agent.name.to_lowercase().contains(&query_lower) ||
+                // Search in task description
+                agent.task.to_lowercase().contains(&query_lower) ||
+                // Search in branch name
+                agent.branch_name.to_lowercase().contains(&query_lower) ||
+                // Search in container ID (partial match)
+                agent.container_id.to_lowercase().contains(&query_lower) ||
+                // Search in status
+                format!("{:?}", agent.status).to_lowercase().contains(&query_lower)
+            })
+            .collect();
+
+        Ok(filtered_agents)
+    }
+
+    /// Search agents in a specific workspace
+    pub async fn search_agents_in_workspace(&self, workspace_id: &str, query: &str) -> Result<Vec<crate::agent::types::Agent>> {
+        let workspace = self.workspace_manager
+            .get_workspace(workspace_id)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("Workspace not found"))?;
+
+        let mut agents = Vec::new();
+
+        // Add active agents
+        agents.extend(workspace.list_active_agents().into_iter().cloned());
+
+        // Add archived agents
+        agents.extend(
+            workspace.list_archived_agents()
+                .into_iter()
+                .map(|archived| {
+                    let mut agent = archived.agent.clone();
+                    agent.status = crate::agent::types::AgentStatus::Archived;
+                    agent
+                })
+        );
+
+        if query.trim().is_empty() {
+            return Ok(agents);
+        }
+
+        let query_lower = query.to_lowercase();
+
+        let filtered_agents = agents
+            .into_iter()
+            .filter(|agent| {
+                agent.name.to_lowercase().contains(&query_lower) ||
+                agent.task.to_lowercase().contains(&query_lower) ||
+                agent.branch_name.to_lowercase().contains(&query_lower) ||
+                agent.container_id.to_lowercase().contains(&query_lower) ||
+                format!("{:?}", agent.status).to_lowercase().contains(&query_lower)
+            })
+            .collect();
+
+        Ok(filtered_agents)
+    }
+
     /// Get logs for an agent's container
     pub async fn get_agent_logs(&self, agent_id: &str) -> Result<String> {
         let agent = self.find_agent(agent_id).await

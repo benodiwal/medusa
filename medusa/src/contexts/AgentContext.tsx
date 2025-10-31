@@ -16,6 +16,7 @@ interface AgentActions {
   refreshAgents: () => Promise<void>;
   stopAgent: (agentId: string) => Promise<void>;
   archiveAgent: (agentId: string, reason?: string) => Promise<void>;
+  searchAgents: (query: string) => Promise<AgentResponse[]>;
   selectAgent: (agentId: string | null) => void;
   clearError: () => void;
 }
@@ -138,6 +139,19 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setArchiving, setError, refreshAgents]);
 
+  const searchAgents = useCallback(async (query: string): Promise<AgentResponse[]> => {
+    try {
+      setError(null);
+      const results = await AgentService.searchAgents(query, activeWorkspace?.id);
+      return results;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to search agents';
+      setError(errorMessage);
+      console.error('Search agents error:', error);
+      return [];
+    }
+  }, [setError, activeWorkspace]);
+
   // Refresh agents when active workspace changes
   useEffect(() => {
     if (activeWorkspace) {
@@ -153,6 +167,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     refreshAgents,
     stopAgent,
     archiveAgent,
+    searchAgents,
     selectAgent,
     clearError,
   };

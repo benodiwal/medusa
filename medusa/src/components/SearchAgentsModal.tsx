@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Search, X } from "lucide-react";
-
-interface Agent {
-  id: string;
-  name: string;
-  repository: string;
-}
+import { useAgent } from "@/contexts/AgentContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import type { AgentResponse } from "@/lib/api/types";
 
 interface SearchAgentsModalProps {
   children: React.ReactNode;
@@ -18,60 +16,58 @@ interface SearchAgentsModalProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-// Mock agent data - replace with real data later
-const mockAgents: Agent[] = [
-  {
-    id: "1",
-    name: "hi there",
-    repository: "sculptor/opalescent-cuddly-monkey"
-  },
-  {
-    id: "2",
-    name: "Hi",
-    repository: "sculptor/vengeful-straight-peccary"
-  },
-  {
-    id: "3",
-    name: "Debug API",
-    repository: "sculptor/amazing-coding-helper"
-  },
-  {
-    id: "4",
-    name: "UI Designer",
-    repository: "sculptor/creative-design-agent"
-  }
-];
-
 export const SearchAgentsModal = ({ children, open, onOpenChange }: SearchAgentsModalProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredAgents, setFilteredAgents] = useState<Agent[]>(mockAgents);
+  const [filteredAgents, setFilteredAgents] = useState<AgentResponse[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
 
+  const navigate = useNavigate();
+  const { selectAgent, searchAgents } = useAgent();
+  const { activeWorkspace } = useWorkspace();
+
+  // Perform search when query changes
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredAgents(mockAgents);
-    } else {
-      const filtered = mockAgents.filter(agent =>
-        agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        agent.repository.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredAgents(filtered);
-    }
-    setSelectedIndex(0); // Reset selection when results change
-  }, [searchQuery]);
+    const performSearch = async () => {
+      if (searchQuery.trim() === "") {
+        setFilteredAgents([]);
+        return;
+      }
 
-  // Reset selected index when modal opens
+      try {
+        setIsSearching(true);
+        const results = await searchAgents(searchQuery);
+        setFilteredAgents(results);
+      } catch (error) {
+        console.error("Search failed:", error);
+        setFilteredAgents([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimeout = setTimeout(performSearch, 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery, searchAgents]);
+
+  // Reset when modal opens
   useEffect(() => {
     if (open) {
       setSelectedIndex(0);
       setSearchQuery("");
+      setFilteredAgents([]);
     }
   }, [open]);
 
-  const handleAgentSelect = (agent: Agent) => {
-    console.log("Selected agent:", agent);
+  // Reset selection when results change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filteredAgents]);
+
+  const handleAgentSelect = (agent: AgentResponse) => {
+    selectAgent(agent.id);
+    navigate('/agent');
     onOpenChange?.(false);
-    // TODO: Navigate to agent or perform action
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -115,7 +111,7 @@ export const SearchAgentsModal = ({ children, open, onOpenChange }: SearchAgents
             <Search className="w-4 h-4 text-muted-foreground mr-3" />
             <input
               type="text"
-              placeholder="Search for agent..."
+              placeholder="Search agents by name, task, branch, or status..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -132,7 +128,15 @@ export const SearchAgentsModal = ({ children, open, onOpenChange }: SearchAgents
 
           {/* Results */}
           <div className="max-h-80 overflow-y-auto">
-            {filteredAgents.length > 0 ? (
+            {isSearching ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+                Searching...
+              </div>
+            ) : searchQuery.trim() === "" ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+                Start typing to search agents in {activeWorkspace?.name || "workspace"}
+              </div>
+            ) : filteredAgents.length > 0 ? (
               <div className="py-2">
                 {filteredAgents.map((agent, index) => (
                   <button
@@ -145,13 +149,27 @@ export const SearchAgentsModal = ({ children, open, onOpenChange }: SearchAgents
                         : "hover:bg-secondary"
                     }`}
                   >
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">
                         {agent.name}
                       </div>
+                      <div className="text-xs text-muted-foreground truncate mt-1">
+                        {agent.task}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
-                      {agent.repository}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                        {agent.branch_name}
+                      </div>
+                      <div className={`text-xs px-2 py-1 rounded font-medium ${
+                        agent.status.toLowerCase() === 'running'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : agent.status.toLowerCase() === 'archived'
+                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                      }`}>
+                        {agent.status}
+                      </div>
                     </div>
                   </button>
                 ))}

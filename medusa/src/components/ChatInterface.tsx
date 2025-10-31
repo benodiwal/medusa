@@ -44,7 +44,7 @@ export const ChatInterface = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex-1 flex flex-col h-screen bg-background">
+      <div className="flex-1 flex flex-col h-full bg-background">
       {/* Main Content */}
       <main className="relative flex-1 flex items-center justify-center p-6 bg-background overflow-hidden">
         <div className="relative z-10 w-full max-w-3xl space-y-6">

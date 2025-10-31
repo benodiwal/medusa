@@ -50,4 +50,11 @@ export class AgentService {
   static async executeTerminalCommand(agentId: string, command: string): Promise<string> {
     return await AgentAPI.executeTerminalCommand(agentId, command);
   }
+
+  /**
+   * Search agents by query
+   */
+  static async searchAgents(query: string, workspaceId?: string): Promise<AgentResponse[]> {
+    return await AgentAPI.searchAgents(query, workspaceId);
+  }
 }

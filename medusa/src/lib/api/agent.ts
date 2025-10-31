@@ -66,4 +66,16 @@ export class AgentAPI {
       throw new Error(`Failed to execute terminal command: ${error}`);
     }
   }
+
+  static async searchAgents(query: string, workspaceId?: string): ApiResult<AgentResponse[]> {
+    try {
+      const agents = await invoke<AgentResponse[]>('search_agents', {
+        query,
+        workspaceId: workspaceId || null
+      });
+      return agents;
+    } catch (error) {
+      throw new Error(`Failed to search agents: ${error}`);
+    }
+  }
 }
