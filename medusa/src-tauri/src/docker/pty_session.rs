@@ -70,7 +70,7 @@ impl AgentPtySession {
                             break;
                         }
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         break;
                     }
                 }

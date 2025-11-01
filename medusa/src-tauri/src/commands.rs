@@ -60,7 +60,10 @@ pub async fn create_workspace(
     let repo_path = PathBuf::from(&request.repo_path);
 
     if !repo_path.exists() {
-        return Err(format!("Repository path does not exist: {}", request.repo_path));
+        return Err(format!(
+            "Repository path does not exist: {}",
+            request.repo_path
+        ));
     }
 
     let mut config = WorkspaceConfig::new(request.name.clone(), repo_path);
@@ -75,7 +78,10 @@ pub async fn create_workspace(
 
     match workspace_manager.create_workspace_with_config(config).await {
         Ok(workspace_id) => {
-            info!("Successfully created workspace '{}' with ID: {}", request.name, workspace_id.0);
+            info!(
+                "Successfully created workspace '{}' with ID: {}",
+                request.name, workspace_id.0
+            );
             Ok(workspace_id.0)
         }
         Err(e) => {
@@ -177,13 +183,17 @@ pub async fn create_agent(
     info!("Creating agent with task: {}", request.task_description);
 
     let config = AgentConfig {
-        model: request.model.unwrap_or_else(|| "Claude 4.5 Sonnet".to_string()),
+        model: request
+            .model
+            .unwrap_or_else(|| "Claude 4.5 Sonnet".to_string()),
         temperature: request.temperature.unwrap_or(0.7),
         task_description: request.task_description.clone(),
     };
 
     let result = if let Some(workspace_id) = request.workspace_id {
-        agent_orchestrator.create_agent_in_workspace(&workspace_id, config).await
+        agent_orchestrator
+            .create_agent_in_workspace(&workspace_id, config)
+            .await
     } else {
         agent_orchestrator.create_agent(config).await
     };
@@ -275,9 +285,15 @@ pub async fn archive_agent(
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
 ) -> Result<(), String> {
     let archive_reason = reason.unwrap_or_else(|| "User archived".to_string());
-    info!("Archiving agent '{}' with reason: {}", agent_id, archive_reason);
+    info!(
+        "Archiving agent '{}' with reason: {}",
+        agent_id, archive_reason
+    );
 
-    match agent_orchestrator.archive_agent(&agent_id, archive_reason).await {
+    match agent_orchestrator
+        .archive_agent(&agent_id, archive_reason)
+        .await
+    {
         Ok(()) => {
             info!("Successfully archived agent: {}", agent_id);
             Ok(())
@@ -352,15 +368,27 @@ pub async fn execute_terminal_command(
     command: String,
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
 ) -> Result<String, String> {
-    info!("Executing terminal command for agent {}: {}", agent_id, command);
+    info!(
+        "Executing terminal command for agent {}: {}",
+        agent_id, command
+    );
 
-    match agent_orchestrator.execute_terminal_command(&agent_id, &command).await {
+    match agent_orchestrator
+        .execute_terminal_command(&agent_id, &command)
+        .await
+    {
         Ok(output) => {
-            info!("Successfully executed terminal command for agent: {}", agent_id);
+            info!(
+                "Successfully executed terminal command for agent: {}",
+                agent_id
+            );
             Ok(output)
         }
         Err(e) => {
-            error!("Failed to execute terminal command for agent '{}': {}", agent_id, e);
+            error!(
+                "Failed to execute terminal command for agent '{}': {}",
+                agent_id, e
+            );
             Err(format!("Failed to execute command: {}", e))
         }
     }
@@ -375,7 +403,9 @@ pub async fn search_agents(
     info!("Searching agents with query: '{}'", query);
 
     let result = if let Some(workspace_id) = workspace_id {
-        agent_orchestrator.search_agents_in_workspace(&workspace_id, &query).await
+        agent_orchestrator
+            .search_agents_in_workspace(&workspace_id, &query)
+            .await
     } else {
         agent_orchestrator.search_agents(&query).await
     };
@@ -394,7 +424,11 @@ pub async fn search_agents(
                     created_at: agent.created_at.to_rfc3339(),
                 })
                 .collect();
-            info!("Found {} agents matching query '{}'", responses.len(), query);
+            info!(
+                "Found {} agents matching query '{}'",
+                responses.len(),
+                query
+            );
             Ok(responses)
         }
         Err(e) => {
@@ -413,7 +447,9 @@ pub async fn open_terminal(
     info!("Opening terminal for agent: {}", agent_id);
 
     // Get the agent to find its container
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
     // Create PTY session
@@ -440,11 +476,15 @@ pub async fn close_terminal(
 ) -> Result<(), String> {
     info!("Closing terminal for agent: {}", agent_id);
 
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
-    container_manager.close_pty_session(&agent.container_id).await;
-    
+    container_manager
+        .close_pty_session(&agent.container_id)
+        .await;
+
     info!("Successfully closed terminal for agent: {}", agent_id);
     Ok(())
 }
@@ -456,7 +496,9 @@ pub async fn send_terminal_input(
     container_manager: State<'_, Arc<ContainerManager>>,
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
 ) -> Result<(), String> {
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
     match container_manager
@@ -465,7 +507,10 @@ pub async fn send_terminal_input(
     {
         Ok(()) => Ok(()),
         Err(e) => {
-            error!("Failed to send input to terminal for agent '{}': {}", agent_id, e);
+            error!(
+                "Failed to send input to terminal for agent '{}': {}",
+                agent_id, e
+            );
             Err(format!("Failed to send input: {}", e))
         }
     }
@@ -477,7 +522,9 @@ pub async fn recv_terminal_output(
     container_manager: State<'_, Arc<ContainerManager>>,
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
 ) -> Result<Option<Vec<u8>>, String> {
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
     // Use non-blocking receive
@@ -496,9 +543,14 @@ pub async fn resize_terminal(
     container_manager: State<'_, Arc<ContainerManager>>,
     agent_orchestrator: State<'_, Arc<AgentOrchestrator>>,
 ) -> Result<(), String> {
-    info!("Resizing terminal for agent {} to {}x{}", agent_id, rows, cols);
+    info!(
+        "Resizing terminal for agent {} to {}x{}",
+        agent_id, rows, cols
+    );
 
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
     match container_manager
@@ -523,7 +575,9 @@ pub async fn start_terminal_stream(
 ) -> Result<(), String> {
     info!("Starting terminal stream for agent: {}", agent_id);
 
-    let agent = agent_orchestrator.get_agent(&agent_id).await
+    let agent = agent_orchestrator
+        .get_agent(&agent_id)
+        .await
         .ok_or_else(|| "Agent not found".to_string())?;
 
     let container_id = agent.container_id.clone();
@@ -533,18 +587,18 @@ pub async fn start_terminal_stream(
     // Spawn a task to continuously stream output
     tokio::spawn(async move {
         loop {
-            if let Some(output) = container_manager_clone
-                .recv_from_pty(&container_id)
-                .await
-            {
-                // Emit event to frontend
-                let _ = window.emit(
-                    &format!("terminal-output-{}", agent_id_clone),
-                    output,
-                );
-            } else {
-                // Session closed
-                break;
+            match container_manager_clone.recv_from_pty(&container_id).await {
+                Some(output) => {
+                    let _ = window.emit(&format!("terminal-output-{}", agent_id_clone), output);
+                }
+                None => {
+                    // Session ended!
+                    let _ = window.emit(
+                        &format!("terminal-closed-{}", agent_id_clone),
+                        "Session ended",
+                    );
+                    break;
+                }
             }
         }
     });
