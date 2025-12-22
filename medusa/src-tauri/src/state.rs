@@ -1,29 +1,17 @@
-use std::sync::Arc;
-
-use crate::agent::AgentOrchestrator;
-use crate::docker::ContainerManager;
-use crate::workspace::WorkspaceManager;
-use anyhow::Result;
-
+/// App state for Medusa Plans
+/// Currently minimal - may expand for settings persistence
 pub struct AppState {
-    pub workspace_manager: Arc<WorkspaceManager>,
-    pub container_manager: Arc<ContainerManager>,
-    pub agent_orchestrator: Arc<AgentOrchestrator>,
+    // Future: Add settings, annotation state, etc.
 }
 
 impl AppState {
-    pub fn new() -> Result<Self> {
-        let workspace_manager = Arc::new(WorkspaceManager::new());
-        let container_manager = Arc::new(ContainerManager::new()?);
-        let agent_orchestrator = Arc::new(AgentOrchestrator::new(
-            container_manager.clone(),
-            workspace_manager.clone(),
-        ));
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 
-        Ok(Self {
-            workspace_manager,
-            container_manager,
-            agent_orchestrator,
-        })
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
