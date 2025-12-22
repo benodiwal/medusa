@@ -10,7 +10,9 @@
     "dialog:default",
     "dialog:allow-open",
     "opener:default",
-    "sql:default",
-    "sql:allow-execute"
+    "notification:default",
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "notification:allow-notify"
   ]
 }
