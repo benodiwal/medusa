@@ -222,6 +222,15 @@ All colors MUST be HSL.
 body {
   background-color: theme(--color-background);
   color: theme(--color-foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospace font for code */
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 }
 
 /* Terminal styles */
@@ -323,4 +332,47 @@ body {
   color: #f44336;
   font-size: 12px;
   border-bottom: 1px solid #3e3e42;
+}
+
+/* Annotation highlight styles for plan review */
+.annotation-highlight {
+  background-color: hsl(45 90% 55% / 30%);
+  border-radius: 2px;
+  padding: 1px 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.annotation-highlight:hover {
+  background-color: hsl(45 90% 55% / 50%);
+}
+
+.annotation-highlight.deletion {
+  background-color: hsl(0 65% 55% / 25%);
+  text-decoration: line-through;
+  text-decoration-color: hsl(0 65% 55% / 80%);
+}
+
+.annotation-highlight.deletion:hover {
+  background-color: hsl(0 65% 55% / 40%);
+}
+
+.annotation-highlight.comment {
+  background-color: hsl(200 80% 55% / 25%);
+  border-bottom: 2px solid hsl(200 80% 55% / 60%);
+}
+
+.annotation-highlight.comment:hover {
+  background-color: hsl(200 80% 55% / 40%);
+}
+
+/* Code block syntax highlighting overrides */
+.hljs {
+  background: transparent !important;
+  padding: 1rem !important;
+}
+
+/* Ensure proper scrolling for plan review */
+html, body, #root {
+  overflow: auto;
 }
