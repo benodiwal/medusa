@@ -158,7 +158,7 @@ const Ascii = () => {
   // Create visible text by revealing characters progressively
   const getVisibleText = () => {
     let charCount = 0
-    return lines.map((line, lineIndex) => {
+    return lines.map((line, _lineIndex) => {
       const lineLength = line.length + 1 // +1 for newline character
       const lineStart = charCount
       charCount += lineLength
