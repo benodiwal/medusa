@@ -1,22 +1,62 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 import TypingAnimation from '../components/TypingAnimation';
 import { useTheme } from '../contexts/ThemeContext';
 
+interface HookModeResponse {
+  hook_mode: boolean;
+  response_file: string | null;
+}
+
 const Loading = () => {
   const navigate = useNavigate();
-  const { effectiveTheme } = useTheme();
+  const { effectiveTheme: _effectiveTheme } = useTheme();
+  const [isHookMode, setIsHookMode] = useState<boolean | null>(null);
 
+  // Check if we're in hook mode (launched from Claude Code)
   useEffect(() => {
-    const redirectTimer = setTimeout(() => {
-      navigate('/app');
-    }, 6000);
+    const checkHookMode = async () => {
+      try {
+        const response = await invoke<HookModeResponse>('get_hook_mode');
+        setIsHookMode(response.hook_mode);
 
-    return () => {
-      clearTimeout(redirectTimer);
+        // If in hook mode, skip animation and go directly to app
+        if (response.hook_mode) {
+          navigate('/app');
+        }
+      } catch (error) {
+        // Not in Tauri context or error, assume not in hook mode
+        setIsHookMode(false);
+      }
     };
+
+    checkHookMode();
   }, [navigate]);
+
+  // Normal animation timer (only if not in hook mode)
+  useEffect(() => {
+    if (isHookMode === false) {
+      const redirectTimer = setTimeout(() => {
+        navigate('/app');
+      }, 6000);
+
+      return () => {
+        clearTimeout(redirectTimer);
+      };
+    }
+  }, [navigate, isHookMode]);
+
+  // Show nothing while checking hook mode
+  if (isHookMode === null) {
+    return <div className="fixed inset-0 bg-background" />;
+  }
+
+  // If in hook mode, show nothing (navigation happens immediately)
+  if (isHookMode) {
+    return <div className="fixed inset-0 bg-background" />;
+  }
 
   return (
     <div className="fixed inset-0 flex items-center justify-center w-screen h-screen m-0 p-0 bg-background">
