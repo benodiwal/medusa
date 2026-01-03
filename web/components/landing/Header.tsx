@@ -20,7 +20,25 @@ const Header = () => {
                 MEDUSA
               </div>
             </div>
-            <DownloadButton />
+            <div className="flex items-center gap-4 sm:gap-6">
+              <a
+                href="/docs"
+                className="text-sm font-medium hover:underline hidden sm:block"
+                style={{color: '#6B5B47'}}
+              >
+                Docs
+              </a>
+              <a
+                href="https://github.com/benodiwal/medusa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium hover:underline hidden sm:block"
+                style={{color: '#6B5B47'}}
+              >
+                GitHub
+              </a>
+              <DownloadButton />
+            </div>
           </div>
         </div>
       </header>
