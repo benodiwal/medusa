@@ -3,7 +3,7 @@ import Ascii from "../components/landing/Ascii";
 import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
 import Image from "next/image";
-import WaitlistForm from "../components/WaitlistForm";
+import DownloadButton from "../components/DownloadButton";
 
 export default function Home() {
   return (
@@ -26,26 +26,20 @@ export default function Home() {
             {/* Hero Text Content */}
             <div className="relative z-10 max-w-2xl">
               <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight mb-4 sm:mb-6" style={{color: '#6B5B47'}}>
-                Orchestration for Coding agents
+                Review AI plans before they execute
               </h1>
               <p className="text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 leading-relaxed" style={{color: '#6B5B47'}}>
-                Deploy any agent in secure containers. Execute parallel workflows, <br/> switch contexts instantly, and maintain control over AI-generated code.
+                Intercept Claude Code plans, add annotations, request changes, <br className="hidden sm:block"/> and approve only what you want. Stay in control of AI-generated code.
               </p>
 
-              {/* Email Signup Form */}
+              {/* Download Button */}
               <div className="mb-8 sm:mb-12 px-1 sm:pl-1">
-                <p className="text-sm mb-4" style={{color: '#6B5B47'}}>Available soon. Be first to get access.</p>
-                <WaitlistForm
-                  layout="horizontal"
-                  buttonText="REQUEST ACCESS"
-                  placeholder="YOUR EMAIL"
-                  className="max-w-md"
-                />
+                <DownloadButton />
               </div>
             </div>
           </div>
 
-          {/* Hero Image Section with SaaS Animation */}
+          {/* Hero Image Section */}
           <div className="pb-20">
             <div className="relative group">
               {/* Gradient background effect */}
@@ -56,7 +50,7 @@ export default function Home() {
                 <div className="relative aspect-video w-full">
                   <Image
                     src="/hero.png"
-                    alt="Medusa Platform Demo"
+                    alt="Medusa Plan Review Interface"
                     fill
                     className="object-cover animate-fadeIn"
                     priority

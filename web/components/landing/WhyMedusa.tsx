@@ -23,89 +23,89 @@ const WhyMedusa = () => {
           {/* Right - Description */}
           <div className="flex flex-col justify-center">
             <p className="text-base sm:text-lg leading-relaxed" style={{color: '#6B5B47'}}>
-              Agent orchestration shouldn&apos;t feel like juggling chaos. Medusa gives you the control,
-              safety, and flexibility to work with any AI coding agent while maintaining oversight
-              of your development process.
+              AI agents write code fast. Sometimes too fast. Medusa gives you a checkpoint
+              before execution—review the plan, mark what needs fixing, and approve only
+              when you&apos;re ready.
             </p>
           </div>
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
 
-          {/* Agent-agnostic by design */}
+          {/* Kanban workflow */}
           <div className="space-y-2 sm:space-y-3">
             <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
-                src="/prompt.png"
-                alt="Agent-agnostic design"
+                src="/kanban.png"
+                alt="Kanban board"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Agent-agnostic by design
+              Kanban workflow
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Claude Code, Codex, or your custom agent—Medusa works with them all.
-              No vendor lock-in, no switching costs.
+              Plans flow through Pending, In Review, and Approved columns.
+              See what&apos;s waiting, what you&apos;re reviewing, and what&apos;s done.
             </p>
           </div>
 
-          {/* Safe experimentation */}
+          {/* Inline annotations */}
           <div className="space-y-2 sm:space-y-3">
             <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
-                src="/agent.png"
-                alt="Safe experimentation"
+                src="/annotations.png"
+                alt="Inline annotations"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Safe experimentation
+              Inline annotations
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Every agent runs in an isolated container. Test aggressive changes, run experimental
-              prompts, and roll back instantly without risk.
+              Highlight text, add comments, mark deletions. Your feedback goes
+              directly to Claude as structured context for the next iteration.
             </p>
           </div>
 
-          {/* See the best solution */}
+          {/* Diff view */}
           <div className="space-y-2 sm:space-y-3">
             <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
-                src="/commits.png"
-                alt="Compare solutions"
+                src="/diff.png"
+                alt="Diff view"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              See the best solution
+              Revision diffs
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Run multiple agents on the same task in parallel. Compare approaches, spot issues
-              faster, and choose the implementation that actually works.
+              When you request changes, see exactly what Claude modified.
+              Line-by-line diff between the original plan and the revision.
             </p>
           </div>
 
-          {/* Instant context switching */}
+          {/* Obsidian integration */}
           <div className="space-y-2 sm:space-y-3">
             <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
-                src="/workspace.png"
-                alt="Context switching"
+                src="/obsidian.png"
+                alt="Obsidian integration"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Instant context switching
+              Save to Obsidian
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Jump between agent environments with one click. Test frontend changes, check backend
-              logic, verify deployment—all without leaving your flow.
+              Archive approved plans to your Obsidian vault with one click.
+              Build a knowledge base of implementation decisions.
             </p>
           </div>
 

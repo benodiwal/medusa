@@ -1,6 +1,6 @@
 'use client'
 
-import WaitlistForm from '../WaitlistForm'
+import DownloadButton from '../DownloadButton'
 
 const Footer = () => {
   return (
@@ -10,20 +10,16 @@ const Footer = () => {
         {/* Main CTA Section */}
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6" style={{color: '#6B5B47'}}>
-            Making tools for makers
+            Take control of AI coding
           </h2>
 
           <p className="text-base sm:text-lg mb-6 sm:mb-8" style={{color: '#6B5B47'}}>
-            Available soon. Be first to get access.
+            Review every plan. Approve only what you trust.
           </p>
 
-          {/* Email Signup Form */}
-          <WaitlistForm
-            layout="horizontal"
-            buttonText="REQUEST ACCESS"
-            placeholder="YOUR EMAIL"
-            className="max-w-md mx-auto"
-          />
+          <div className="flex justify-center">
+            <DownloadButton />
+          </div>
         </div>
 
         {/* Bottom Links and Copyright */}
