@@ -91,8 +91,8 @@ export default function Docs() {
 
             <div className="prose prose-lg max-w-none">
               <p className="text-base sm:text-lg leading-relaxed mb-6" style={{color: '#6B5B47'}}>
-                Medusa is a desktop application available for macOS, Windows, and Linux. Download the
-                appropriate version for your operating system.
+                Medusa is a desktop application currently available for macOS. Windows and Linux
+                support is coming soon.
               </p>
 
               <div className="mb-6">
@@ -540,10 +540,10 @@ export default function Docs() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 border-t" style={{borderColor: '#D2691E', opacity: 0.2}}>
+      <footer className="py-8 border-t" style={{borderColor: '#D2691E'}}>
         <div className="max-w-[900px] mx-auto px-4 sm:px-6 lg:px-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm" style={{color: '#6B5B47'}}>
-            <Link href="/" className="hover:underline">← Back to Home</Link>
+            <Link href="/" className="hover:underline">Back to Home</Link>
             <div className="flex items-center gap-4">
               <a
                 href="https://github.com/benodiwal/medusa"
