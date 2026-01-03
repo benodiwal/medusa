@@ -59,7 +59,26 @@ const Footer = () => {
           </div>
 
           <p className="text-xs sm:text-sm" style={{color: '#6B5B47', opacity: 0.6}}>
-            Made for developers who want control over AI-generated code.
+            Built by{' '}
+            <a
+              href="https://github.com/benodiwal"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{color: '#6B5B47', opacity: 1}}
+            >
+              @benodiwal
+            </a>
+            {' '}·{' '}
+            <a
+              href="https://x.com/ban___tan"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{color: '#6B5B47', opacity: 1}}
+            >
+              @ban___tan
+            </a>
           </p>
         </div>
 
