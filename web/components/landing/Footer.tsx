@@ -43,9 +43,7 @@ const Footer = () => {
               GitHub
             </a>
             <a
-              href="https://github.com/benodiwal/medusa/blob/master/README.md"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/docs"
               className="hover:underline transition-all"
             >
               Documentation
