@@ -49,12 +49,6 @@ const Footer = () => {
               Documentation
             </a>
             <a
-              href="/demo"
-              className="hover:underline transition-all"
-            >
-              Demo
-            </a>
-            <a
               href="https://github.com/benodiwal/medusa/blob/master/LICENSE"
               target="_blank"
               rel="noopener noreferrer"

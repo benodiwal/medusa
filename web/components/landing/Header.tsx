@@ -29,13 +29,6 @@ const Header = () => {
                 Docs
               </a>
               <a
-                href="/demo"
-                className="text-sm font-medium hover:underline hidden sm:block"
-                style={{color: '#6B5B47'}}
-              >
-                Demo
-              </a>
-              <a
                 href="https://github.com/benodiwal/medusa"
                 target="_blank"
                 rel="noopener noreferrer"
