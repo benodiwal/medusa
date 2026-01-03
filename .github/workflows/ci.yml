@@ -3,8 +3,16 @@ name: CI
 on:
   push:
     branches: [master]
+    paths:
+      - 'medusa/**'
+      - 'hooks/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [master]
+    paths:
+      - 'medusa/**'
+      - 'hooks/**'
+      - '.github/workflows/**'
 
 jobs:
   build:

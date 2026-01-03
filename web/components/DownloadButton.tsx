@@ -13,7 +13,7 @@ const DownloadButton = ({ variant = 'default', className = '' }: DownloadButtonP
       href="https://github.com/benodiwal/medusa/releases/latest"
       target="_blank"
       rel="noopener noreferrer"
-      className={`px-3 py-2 sm:px-5 text-xs sm:text-sm font-medium border-2 rounded-md transition-all hover:shadow-md flex items-center gap-1 sm:gap-2 cursor-pointer ${className}`}
+      className={`px-3 py-2 sm:px-5 text-xs sm:text-sm font-medium border-2 rounded-md transition-all hover:shadow-md inline-flex items-center gap-1 sm:gap-2 cursor-pointer w-fit ${className}`}
       style={{ borderColor: '#6B5B47', color: '#6B5B47' }}
     >
       <span className={variant === 'compact' ? 'sm:hidden' : 'hidden sm:inline'}>
