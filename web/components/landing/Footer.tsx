@@ -10,27 +10,58 @@ const Footer = () => {
         {/* Main CTA Section */}
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6" style={{color: '#6B5B47'}}>
-            Take control of AI coding
+            Stop flying blind
           </h2>
 
           <p className="text-base sm:text-lg mb-6 sm:mb-8" style={{color: '#6B5B47'}}>
-            Review every plan. Approve only what you trust.
+            Add human oversight to Claude Code. Review every plan, approve only what you trust.
           </p>
 
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <DownloadButton />
+            <a
+              href="https://github.com/benodiwal/medusa"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2 text-sm font-medium border-2 rounded-md transition-all hover:shadow-md"
+              style={{ borderColor: '#6B5B47', color: '#6B5B47' }}
+            >
+              View Source on GitHub
+            </a>
           </div>
         </div>
 
-        {/* Bottom Links and Copyright */}
+        {/* Bottom Links */}
         <div className="text-center space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm" style={{color: '#6B5B47'}}>
-            <a href="#" className="hover:underline transition-all">PRIVACY POLICY</a>
-            <a href="#" className="hover:underline transition-all">TERMS OF USE</a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm" style={{color: '#6B5B47'}}>
+            <a
+              href="https://github.com/benodiwal/medusa"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline transition-all"
+            >
+              GitHub
+            </a>
+            <a
+              href="https://github.com/benodiwal/medusa/blob/master/README.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline transition-all"
+            >
+              Documentation
+            </a>
+            <a
+              href="https://github.com/benodiwal/medusa/blob/master/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline transition-all"
+            >
+              Apache 2.0 License
+            </a>
           </div>
 
-          <p className="text-xs sm:text-sm" style={{color: '#6B5B47', opacity: 0.7}}>
-            © 2025 COPYRIGHT.
+          <p className="text-xs sm:text-sm" style={{color: '#6B5B47', opacity: 0.6}}>
+            Made for developers who want control over AI-generated code.
           </p>
         </div>
 

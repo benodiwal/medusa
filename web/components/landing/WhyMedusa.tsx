@@ -15,17 +15,19 @@ const WhyMedusa = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 mb-12 sm:mb-16 lg:mb-20">
           {/* Left - Title */}
           <div>
+            <p className="text-sm sm:text-base font-medium mb-3 tracking-wide" style={{color: '#D2691E'}}>
+              FEATURES
+            </p>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight" style={{color: '#6B5B47'}}>
-              Why Medusa?
+              Review with precision
             </h2>
           </div>
 
           {/* Right - Description */}
           <div className="flex flex-col justify-center">
             <p className="text-base sm:text-lg leading-relaxed" style={{color: '#6B5B47'}}>
-              AI agents write code fast. Sometimes too fast. Medusa gives you a checkpoint
-              before execution—review the plan, mark what needs fixing, and approve only
-              when you&apos;re ready.
+              Claude Code can rewrite your entire codebase in minutes. Medusa makes sure
+              that&apos;s actually what you want—with tools designed for careful review.
             </p>
           </div>
         </div>
@@ -44,11 +46,11 @@ const WhyMedusa = () => {
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Kanban workflow
+              Multi-session tracking
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Plans flow through Pending, In Review, and Approved columns.
-              See what&apos;s waiting, what you&apos;re reviewing, and what&apos;s done.
+              Running Claude in multiple terminals? One board tracks every plan across all sessions.
+              See what&apos;s pending, what you&apos;re reviewing, and what&apos;s approved.
             </p>
           </div>
 
@@ -66,8 +68,8 @@ const WhyMedusa = () => {
               Inline annotations
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Highlight text, add comments, mark deletions. Your feedback goes
-              directly to Claude as structured context for the next iteration.
+              Select any text to comment, delete, or suggest a replacement. Your feedback goes
+              directly to Claude as structured context—no copy-pasting needed.
             </p>
           </div>
 
@@ -85,8 +87,8 @@ const WhyMedusa = () => {
               Revision diffs
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              When you request changes, see exactly what Claude modified.
-              Line-by-line diff between the original plan and the revision.
+              Requested changes? See exactly how Claude updated the plan. Line-by-line
+              comparison between versions so nothing slips through.
             </p>
           </div>
 
@@ -101,11 +103,11 @@ const WhyMedusa = () => {
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Save to Obsidian
+              Obsidian export
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Archive approved plans to your Obsidian vault with one click.
-              Build a knowledge base of implementation decisions.
+              Every approved plan becomes documentation. One-click export to your
+              Obsidian vault builds a knowledge base of implementation decisions.
             </p>
           </div>
 

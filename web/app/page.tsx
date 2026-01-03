@@ -25,11 +25,14 @@ export default function Home() {
 
             {/* Hero Text Content */}
             <div className="relative z-10 max-w-2xl">
+              <p className="text-sm sm:text-base font-medium mb-3 tracking-wide" style={{color: '#D2691E'}}>
+                FOR CLAUDE CODE USERS
+              </p>
               <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight mb-4 sm:mb-6" style={{color: '#6B5B47'}}>
-                Review AI plans before they execute
+                The checkpoint between Claude and your codebase
               </h1>
               <p className="text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 leading-relaxed" style={{color: '#6B5B47'}}>
-                Intercept Claude Code plans, add annotations, request changes, <br className="hidden sm:block"/> and approve only what you want. Stay in control of AI-generated code.
+                Claude Code plans complex changes to your project. Medusa shows you exactly <br className="hidden sm:block"/> what&apos;s about to happen—review, annotate, approve—before a single line executes.
               </p>
 
               {/* Download Button */}
