@@ -443,19 +443,28 @@ export default function Docs() {
 
               <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
                 <Image
-                  src="/obsidian.png"
-                  alt="Obsidian export"
+                  src="/obsidian-vault.png"
+                  alt="Obsidian vault settings"
                   fill
                   className="object-cover"
                 />
               </div>
 
               <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Exporting a plan</h3>
-              <p className="text-base leading-relaxed" style={{color: '#6B5B47'}}>
+              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
                 After approving a plan, click the &quot;Save to Obsidian&quot; button. The plan will be
                 saved as a markdown file with metadata including the date, session, and any
                 annotations you made.
               </p>
+
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/obsidian.png"
+                  alt="Exported plan in Obsidian"
+                  fill
+                  className="object-cover"
+                />
+              </div>
             </div>
           </section>
 
