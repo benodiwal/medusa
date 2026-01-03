@@ -1,6 +1,7 @@
 # Medusa
 
 A desktop app for reviewing Claude Code plans before execution.
+![Medusa](medusa/public/medusa-logo.png)
 
 ## What it does
 
