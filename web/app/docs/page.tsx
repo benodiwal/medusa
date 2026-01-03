@@ -99,21 +99,13 @@ export default function Docs() {
                 <DownloadButton />
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl border border-black/5 mb-6" style={{backgroundColor: '#F3F1E8'}}>
+              <div className="p-4 sm:p-6 rounded-xl border border-black/5" style={{backgroundColor: '#F3F1E8'}}>
                 <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>System Requirements</h4>
                 <ul className="space-y-1 text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
                   <li>• macOS 11+ (Apple Silicon & Intel)</li>
                   <li>• Windows and Linux coming soon</li>
                   <li>• Claude Code CLI installed and configured</li>
                 </ul>
-              </div>
-
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Medusa app window after first launch</p>
-                </div>
               </div>
             </div>
           </section>
@@ -140,8 +132,7 @@ export default function Docs() {
               </p>
 
               <div className="p-4 rounded-xl font-mono text-sm mb-6 overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
-                <p className="mb-2"><span style={{color: '#6B9F6B'}}>macOS/Linux:</span> ~/.claude/settings.json</p>
-                <p><span style={{color: '#6B9F6B'}}>Windows:</span> %USERPROFILE%\.claude\settings.json</p>
+                <p><span style={{color: '#6B9F6B'}}>macOS:</span> ~/.claude/settings.json</p>
               </div>
 
               <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Step 2: Add the Medusa hook</h3>
@@ -238,12 +229,13 @@ export default function Docs() {
                 ))}
               </div>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Plan review modal with a sample plan open</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/hero.png"
+                  alt="Plan review modal"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Approving or requesting changes</h3>
@@ -371,12 +363,13 @@ export default function Docs() {
                 ))}
               </div>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Kanban board with plans in different columns</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/kanban.png"
+                  alt="Kanban board with plans"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <p className="text-base leading-relaxed" style={{color: '#6B5B47'}}>
@@ -402,12 +395,13 @@ export default function Docs() {
                 changed. The diff view highlights additions, deletions, and modifications.
               </p>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Diff view showing changes between plan versions</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/diff.png"
+                  alt="Diff view showing changes"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#F0FFF4', borderColor: '#22C55E'}}>
@@ -444,28 +438,21 @@ export default function Docs() {
                 <li>Optionally configure a subfolder for plans</li>
               </ol>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Obsidian settings panel with vault path configured</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/obsidian.png"
+                  alt="Obsidian export"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Exporting a plan</h3>
-              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
+              <p className="text-base leading-relaxed" style={{color: '#6B5B47'}}>
                 After approving a plan, click the &quot;Save to Obsidian&quot; button. The plan will be
                 saved as a markdown file with metadata including the date, session, and any
                 annotations you made.
               </p>
-
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Exported plan in Obsidian</p>
-                </div>
-              </div>
             </div>
           </section>
 
