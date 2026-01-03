@@ -173,12 +173,13 @@ export default function Docs() {
                 paths you need for your system.
               </p>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Medusa Settings → Hook Configuration panel</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/hook-configuration.png"
+                  alt="Hook Configuration panel"
+                  fill
+                  className="object-cover"
+                />
               </div>
             </div>
           </section>
@@ -309,12 +310,13 @@ export default function Docs() {
                 ))}
               </div>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Annotation toolbar with text selected</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/annotations-demo.png"
+                  alt="Annotation toolbar with text selected"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Global comments</h3>
@@ -323,12 +325,13 @@ export default function Docs() {
                 This is useful for high-level direction like &quot;focus on performance&quot; or &quot;keep the existing API structure&quot;.
               </p>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Global comment input area</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/global-comment.png"
+                  alt="Global comment input"
+                  fill
+                  className="object-cover"
+                />
               </div>
             </div>
           </section>
@@ -494,12 +497,13 @@ export default function Docs() {
                 ))}
               </div>
 
-              {/* Screenshot placeholder */}
-              <div className="relative w-full aspect-video mb-6 rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center" style={{borderColor: '#D2691E', backgroundColor: '#F3F1E8'}}>
-                <div className="text-center p-4">
-                  <p className="font-medium mb-1" style={{color: '#D2691E'}}>Screenshot needed</p>
-                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.7}}>Full settings panel</p>
-                </div>
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/settings.png"
+                  alt="Settings panel"
+                  fill
+                  className="object-cover"
+                />
               </div>
             </div>
           </section>
