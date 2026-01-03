@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/medusa-plan-review.sh"
+            "command": "~/.claude/hooks/medusa-plan-review.sh",
+            "timeout": 3600
           }
         ]
       }

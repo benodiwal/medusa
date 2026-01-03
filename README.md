@@ -36,13 +36,30 @@ chmod +x ~/.claude/hooks/medusa-plan-review.sh
 
 2. Edit `~/.claude/hooks/medusa-plan-review.sh` and update the `MEDUSA_APP` path to point to your installation.
 
-3. Merge the hook configuration into your `~/.claude/settings.json`:
+3. Add the hook configuration to your `~/.claude/settings.json`:
 
-```bash
-cat hooks/claude-settings.json
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/medusa-plan-review.sh",
+            "timeout": 3600
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
-See [hooks/medusa-plan-review.sh](hooks/medusa-plan-review.sh) and [hooks/claude-settings.json](hooks/claude-settings.json) for the full configuration.
+**Important:** The `timeout` value (in seconds) controls how long Claude Code waits for your review. Default is 60 seconds which is too short. Set it to `3600` (1 hour) or higher for comfortable review time.
+
+See [hooks/claude-settings.json](hooks/claude-settings.json) for the full configuration.
 
 ## Keyboard Shortcuts
 

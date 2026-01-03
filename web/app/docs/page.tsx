@@ -150,13 +150,23 @@ export default function Docs() {
         "hooks": [
           {
             "type": "command",
-            "command": "/path/to/medusa-plan-review.sh"
+            "command": "/path/to/medusa-plan-review.sh",
+            "timeout": 3600
           }
         ]
       }
     ]
   }
 }`}</pre>
+              </div>
+
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
+                <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>About the timeout</h4>
+                <p className="text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
+                  The <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>timeout</code> value is in seconds.
+                  Claude Code&apos;s default is 60 seconds, which is too short for plan review.
+                  Set it to <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>3600</code> (1 hour) or higher.
+                </p>
               </div>
 
               <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
