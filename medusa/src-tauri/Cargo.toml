@@ -24,3 +24,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "5"
 uuid = { version = "1", features = ["v4"] }
 urlencoding = "2"
+rusqlite = { version = "0.31", features = ["bundled"] }

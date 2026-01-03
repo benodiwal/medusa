@@ -25,12 +25,19 @@ pub fn run() {
             commands::deny_plan,
             commands::remove_plan,
             commands::clear_completed,
+            commands::save_annotations,
             commands::save_to_obsidian,
             commands::get_obsidian_vaults,
             commands::read_file,
             commands::open_in_obsidian,
             commands::get_settings,
             commands::save_settings,
+            // History commands
+            commands::add_to_history,
+            commands::get_history,
+            commands::search_history,
+            commands::clear_old_history,
+            commands::get_history_count,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

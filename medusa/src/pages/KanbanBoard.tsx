@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Settings, RefreshCw, Search, X } from 'lucide-react';
+import { Settings, RefreshCw, Search, X, Clock } from 'lucide-react';
 import { PlanItem, PlanStatus } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
@@ -197,6 +197,13 @@ export default function KanbanBoard() {
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => navigate('/history')}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              title="History"
+            >
+              <Clock className="w-4 h-4" />
             </button>
             <button
               onClick={() => navigate('/settings')}

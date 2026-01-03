@@ -75,6 +75,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
   const onAddAnnotationRef = useRef(onAddAnnotation);
   const onRemoveAnnotationRef = useRef(onRemoveAnnotation);
   const pendingSourceRef = useRef<any>(null);
+  const isRestoringRef = useRef(false);
   const [toolbarState, setToolbarState] = useState<{ element: HTMLElement; source: any } | null>(null);
   const [clickedAnnotation, setClickedAnnotation] = useState<{ id: string; element: HTMLElement } | null>(null);
   const [hoveredCodeBlock, setHoveredCodeBlock] = useState<{ block: Block; element: HTMLElement } | null>(null);
@@ -185,6 +186,9 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
     highlighterRef.current = highlighter;
 
     highlighter.on(Highlighter.event.CREATE, ({ sources }: { sources: any[] }) => {
+      // Skip showing toolbar when restoring persisted annotations
+      if (isRestoringRef.current) return;
+
       if (sources.length > 0) {
         const source = sources[0];
         const doms = highlighter.getDoms(source.id);
@@ -216,12 +220,37 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
     return () => highlighter.dispose();
   }, [onSelectAnnotation]);
 
+  // Restore highlights from persisted annotations
   useEffect(() => {
     const highlighter = highlighterRef.current;
     if (!highlighter) return;
 
+    // Set flag to prevent toolbar from showing during restoration
+    isRestoringRef.current = true;
+
     annotations.forEach(ann => {
       try {
+        // Skip global comments - they don't have text highlights
+        if (ann.type === AnnotationType.GLOBAL_COMMENT) return;
+
+        // Check if highlight already exists in DOM
+        const existingDoms = highlighter.getDoms(ann.id);
+
+        if (!existingDoms || existingDoms.length === 0) {
+          // Highlight doesn't exist - try to recreate from stored metadata
+          if (ann.startMeta && ann.endMeta) {
+            // Use web-highlighter's fromStore to recreate the highlight
+            const source = {
+              id: ann.id,
+              text: ann.originalText,
+              startMeta: ann.startMeta,
+              endMeta: ann.endMeta,
+            };
+            highlighter.fromStore(source.startMeta, source.endMeta, source.text, source.id);
+          }
+        }
+
+        // Add the appropriate CSS class
         const doms = highlighter.getDoms(ann.id);
         if (doms?.length > 0) {
           if (ann.type === AnnotationType.DELETION) {
@@ -232,9 +261,14 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
             highlighter.addClass('replacement', ann.id);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to restore annotation highlight:', ann.id, e);
+      }
     });
-  }, [annotations]);
+
+    // Reset flag after restoration is complete
+    isRestoringRef.current = false;
+  }, [annotations, blocks]);
 
   const handleAnnotate = (type: AnnotationType, text?: string) => {
     const highlighter = highlighterRef.current;

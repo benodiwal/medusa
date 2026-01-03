@@ -1,3 +1,4 @@
+use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -31,6 +32,9 @@ pub struct PlanItem {
     /// Previous plan content (for diff view when revisions are made)
     #[serde(default)]
     pub previous_content: Option<String>,
+    /// Annotations made during review (persisted so they survive modal close)
+    #[serde(default)]
+    pub annotations: Option<serde_json::Value>,
 }
 
 /// The plan queue storage
@@ -146,6 +150,7 @@ fn process_pending_plans(queue: &mut PlanQueue) {
                                 feedback: None,
                                 created_at: now(),
                                 previous_content,
+                                annotations: None,
                             };
 
                             queue.plans.insert(id.clone(), plan);
@@ -238,6 +243,7 @@ pub async fn add_plan(request: AddPlanRequest) -> Result<AddPlanResponse, String
         feedback: None,
         created_at: now(),
         previous_content: None,
+        annotations: None,
     };
 
     let queue = get_queue();
@@ -388,6 +394,25 @@ pub async fn clear_completed() -> Result<(), String> {
         plan.status != PlanStatus::Approved
     });
     save_queue_to_file(&guard);
+
+    Ok(())
+}
+
+/// Save annotations for a plan (persists across modal close/reopen)
+#[tauri::command]
+pub async fn save_annotations(id: String, annotations: serde_json::Value) -> Result<(), String> {
+    info!("Saving annotations for plan {}", id);
+
+    let queue = get_queue();
+    let mut guard = queue.lock().map_err(|e| e.to_string())?;
+
+    if let Some(plan) = guard.plans.get_mut(&id) {
+        plan.annotations = Some(annotations);
+        save_queue_to_file(&guard);
+        info!("Annotations saved for plan {}", id);
+    } else {
+        return Err("Plan not found".to_string());
+    }
 
     Ok(())
 }
@@ -561,6 +586,7 @@ pub fn add_plan_from_cli(content: String, source: Option<String>, response_file:
         feedback: None,
         created_at: now(),
         previous_content: None,
+        annotations: None,
     };
 
     // Load existing queue from file, add plan, save back
@@ -576,4 +602,210 @@ pub fn add_plan_from_cli(content: String, source: Option<String>, response_file:
     }
 
     id
+}
+
+// ============== History (SQLite) ==============
+
+/// History item stored in SQLite
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryItem {
+    pub id: String,
+    pub content: String,
+    pub project_name: String,
+    pub source: Option<String>,
+    pub status: String, // "approved" or "rejected"
+    pub feedback: Option<String>,
+    pub annotations: Option<serde_json::Value>,
+    pub created_at: u64,
+    pub completed_at: u64,
+}
+
+/// Get the path to the history database
+fn get_history_db_path() -> PathBuf {
+    let db_dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".medusa");
+    fs::create_dir_all(&db_dir).ok();
+    db_dir.join("history.db")
+}
+
+/// Initialize history database with schema
+fn init_history_db() -> Result<Connection, String> {
+    let db_path = get_history_db_path();
+    let conn = Connection::open(&db_path)
+        .map_err(|e| format!("Failed to open history database: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS history (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            source TEXT,
+            status TEXT NOT NULL,
+            feedback TEXT,
+            annotations TEXT,
+            created_at INTEGER NOT NULL,
+            completed_at INTEGER NOT NULL
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create history table: {}", e))?;
+
+    // Create index for faster queries
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_history_completed_at ON history(completed_at DESC)",
+        [],
+    ).ok();
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_history_project_name ON history(project_name)",
+        [],
+    ).ok();
+
+    Ok(conn)
+}
+
+/// Add a completed plan to history
+#[tauri::command]
+pub async fn add_to_history(
+    id: String,
+    content: String,
+    project_name: String,
+    source: Option<String>,
+    status: String,
+    feedback: Option<String>,
+    annotations: Option<serde_json::Value>,
+    created_at: u64,
+) -> Result<(), String> {
+    info!("Adding plan {} to history", id);
+
+    let conn = init_history_db()?;
+    let completed_at = now();
+    let annotations_json = annotations.map(|a| a.to_string());
+
+    conn.execute(
+        "INSERT OR REPLACE INTO history (id, content, project_name, source, status, feedback, annotations, created_at, completed_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![id, content, project_name, source, status, feedback, annotations_json, created_at, completed_at],
+    ).map_err(|e| format!("Failed to insert into history: {}", e))?;
+
+    info!("Plan {} added to history", id);
+    Ok(())
+}
+
+/// Get history items with pagination
+#[tauri::command]
+pub async fn get_history(limit: Option<u32>, offset: Option<u32>) -> Result<Vec<HistoryItem>, String> {
+    info!("Getting history");
+
+    let conn = init_history_db()?;
+    let limit = limit.unwrap_or(50);
+    let offset = offset.unwrap_or(0);
+
+    let mut stmt = conn.prepare(
+        "SELECT id, content, project_name, source, status, feedback, annotations, created_at, completed_at
+         FROM history ORDER BY completed_at DESC LIMIT ?1 OFFSET ?2"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let history_iter = stmt.query_map(params![limit, offset], |row| {
+        let annotations_str: Option<String> = row.get(6)?;
+        let annotations = annotations_str.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(HistoryItem {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            project_name: row.get(2)?,
+            source: row.get(3)?,
+            status: row.get(4)?,
+            feedback: row.get(5)?,
+            annotations,
+            created_at: row.get(7)?,
+            completed_at: row.get(8)?,
+        })
+    }).map_err(|e| format!("Failed to query history: {}", e))?;
+
+    let mut history = Vec::new();
+    for item in history_iter {
+        if let Ok(item) = item {
+            history.push(item);
+        }
+    }
+
+    info!("Retrieved {} history items", history.len());
+    Ok(history)
+}
+
+/// Search history by project name or content
+#[tauri::command]
+pub async fn search_history(query: String, limit: Option<u32>) -> Result<Vec<HistoryItem>, String> {
+    info!("Searching history for: {}", query);
+
+    let conn = init_history_db()?;
+    let limit = limit.unwrap_or(50);
+    let search_pattern = format!("%{}%", query);
+
+    let mut stmt = conn.prepare(
+        "SELECT id, content, project_name, source, status, feedback, annotations, created_at, completed_at
+         FROM history
+         WHERE project_name LIKE ?1 OR content LIKE ?1
+         ORDER BY completed_at DESC LIMIT ?2"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let history_iter = stmt.query_map(params![search_pattern, limit], |row| {
+        let annotations_str: Option<String> = row.get(6)?;
+        let annotations = annotations_str.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(HistoryItem {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            project_name: row.get(2)?,
+            source: row.get(3)?,
+            status: row.get(4)?,
+            feedback: row.get(5)?,
+            annotations,
+            created_at: row.get(7)?,
+            completed_at: row.get(8)?,
+        })
+    }).map_err(|e| format!("Failed to search history: {}", e))?;
+
+    let mut history = Vec::new();
+    for item in history_iter {
+        if let Ok(item) = item {
+            history.push(item);
+        }
+    }
+
+    info!("Found {} matching history items", history.len());
+    Ok(history)
+}
+
+/// Clear history older than specified days (default 30 days for free tier)
+#[tauri::command]
+pub async fn clear_old_history(days: Option<u32>) -> Result<u32, String> {
+    let days = days.unwrap_or(30);
+    info!("Clearing history older than {} days", days);
+
+    let conn = init_history_db()?;
+    let cutoff = now().saturating_sub((days as u64) * 24 * 60 * 60);
+
+    let deleted = conn.execute(
+        "DELETE FROM history WHERE completed_at < ?1",
+        params![cutoff],
+    ).map_err(|e| format!("Failed to clear old history: {}", e))?;
+
+    info!("Cleared {} old history items", deleted);
+    Ok(deleted as u32)
+}
+
+/// Get history count
+#[tauri::command]
+pub async fn get_history_count() -> Result<u32, String> {
+    let conn = init_history_db()?;
+
+    let count: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM history",
+        [],
+        |row| row.get(0)
+    ).map_err(|e| format!("Failed to count history: {}", e))?;
+
+    Ok(count)
 }

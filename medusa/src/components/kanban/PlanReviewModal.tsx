@@ -25,12 +25,45 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
   const [savedToObsidian, setSavedToObsidian] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const viewerRef = useRef<ViewerHandle>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const hasPreviousContent = !!plan.previous_content;
 
   useEffect(() => {
     setBlocks(parseMarkdownToBlocks(plan.content));
   }, [plan.content]);
+
+  // Load persisted annotations when modal opens
+  useEffect(() => {
+    if (plan.annotations && plan.annotations.length > 0) {
+      setAnnotations(plan.annotations);
+    }
+  }, [plan.id, plan.annotations]);
+
+  // Save annotations to backend (debounced)
+  const saveAnnotationsToBackend = useCallback(async (anns: Annotation[]) => {
+    try {
+      await invoke('save_annotations', { id: plan.id, annotations: anns });
+    } catch (error) {
+      console.error('Failed to save annotations:', error);
+    }
+  }, [plan.id]);
+
+  // Debounced save when annotations change
+  useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveAnnotationsToBackend(annotations);
+    }, 500); // Save 500ms after last change
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [annotations, saveAnnotationsToBackend]);
 
   // Load Obsidian vaults
   useEffect(() => {
@@ -109,12 +142,27 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
 
   const handleApprove = async () => {
     try {
+      const feedbackText = annotations.length > 0 ? exportFeedback(blocks, annotations) : undefined;
+
       await invoke('approve_plan', {
         request: {
           id: plan.id,
-          feedback: annotations.length > 0 ? exportFeedback(blocks, annotations) : undefined,
+          feedback: feedbackText,
         }
       });
+
+      // Save to local history
+      await invoke('add_to_history', {
+        id: plan.id,
+        content: plan.content,
+        projectName: plan.project_name,
+        source: plan.source,
+        status: 'approved',
+        feedback: feedbackText,
+        annotations: annotations.length > 0 ? annotations : null,
+        createdAt: plan.created_at,
+      });
+
       onComplete();
       onClose();
     } catch (error) {
@@ -125,12 +173,27 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
 
   const handleDeny = async (feedback: string) => {
     try {
+      const feedbackText = feedback || 'Changes requested';
+
       await invoke('deny_plan', {
         request: {
           id: plan.id,
-          feedback: feedback || 'Changes requested',
+          feedback: feedbackText,
         }
       });
+
+      // Save to local history as rejected
+      await invoke('add_to_history', {
+        id: plan.id,
+        content: plan.content,
+        projectName: plan.project_name,
+        source: plan.source,
+        status: 'rejected',
+        feedback: feedbackText,
+        annotations: annotations.length > 0 ? annotations : null,
+        createdAt: plan.created_at,
+      });
+
       onComplete();
       onClose();
     } catch (error) {

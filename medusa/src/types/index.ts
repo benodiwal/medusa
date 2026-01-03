@@ -87,6 +87,7 @@ export interface PlanItem {
   feedback?: string;
   created_at: number;
   previous_content?: string;
+  annotations?: Annotation[];
 }
 
 export interface ObsidianVault {
