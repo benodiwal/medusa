@@ -94,6 +94,3 @@ export interface ObsidianVault {
   path: string;
 }
 
-export interface MedusaSettings {
-  hook_timeout_minutes: number;
-}

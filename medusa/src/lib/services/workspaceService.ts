@@ -1,5 +1,5 @@
 import { WorkspaceAPI } from '../api';
-import { FileSystemUtils, type DirectorySelection } from '../utils/filesystem';
+import { FileSystemUtils } from '../utils/filesystem';
 import type { WorkspaceResponse } from '../api/types';
 
 export class WorkspaceService {

@@ -130,6 +130,8 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
       highlighter.addClass('deletion', source.id);
     } else if (type === AnnotationType.COMMENT) {
       highlighter.addClass('comment', source.id);
+    } else if (type === AnnotationType.REPLACEMENT) {
+      highlighter.addClass('replacement', source.id);
     }
 
     onAddAnnotationRef.current(newAnnotation);
@@ -226,6 +228,8 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
             highlighter.addClass('deletion', ann.id);
           } else if (ann.type === AnnotationType.COMMENT) {
             highlighter.addClass('comment', ann.id);
+          } else if (ann.type === AnnotationType.REPLACEMENT) {
+            highlighter.addClass('replacement', ann.id);
           }
         }
       } catch (e) {}

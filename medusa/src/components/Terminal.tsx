@@ -18,7 +18,7 @@ export const Terminal: React.FC<TerminalProps> = ({ agentId, onClose }) => {
   const fitAddonRef = useRef<FitAddon | null>(null);
   
   const isConnectedRef = useRef(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [_isConnected, setIsConnected] = useState(false);
   const [canReconnect, setCanReconnect] = useState(false);
   
   const [error, setError] = useState<string | null>(null);

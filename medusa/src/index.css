@@ -366,6 +366,15 @@ code, pre, .font-mono {
   background-color: hsl(200 80% 55% / 40%);
 }
 
+.annotation-highlight.replacement {
+  background-color: hsl(30 90% 55% / 25%);
+  border-bottom: 2px dashed hsl(30 90% 55% / 70%);
+}
+
+.annotation-highlight.replacement:hover {
+  background-color: hsl(30 90% 55% / 40%);
+}
+
 /* Code block syntax highlighting overrides */
 .hljs {
   background: transparent !important;

@@ -29,18 +29,18 @@ export const ChatSidebar = () => {
     isLoading: isWorkspaceLoading,
     error: workspaceError,
     createWorkspaceFromDirectory,
-    refreshActiveWorkspace,
-    refreshWorkspaces,
+    refreshActiveWorkspace: _refreshActiveWorkspace,
+    refreshWorkspaces: _refreshWorkspaces,
     switchWorkspace,
   } = useWorkspace();
 
   // Agent management
   const {
     agents,
-    isLoading: isAgentLoading,
+    isLoading: _isAgentLoading,
     isArchiving,
     isDeleting,
-    error: agentError,
+    error: _agentError,
     archiveAgent,
     deleteAgent,
     deleteArchivedAgent,

@@ -79,6 +79,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
+  const getPlaceholder = () => {
+    if (activeType === AnnotationType.REPLACEMENT) {
+      return "Replace with...";
+    }
+    return "Add a comment...";
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (activeType && inputValue.trim()) {
@@ -113,6 +120,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             }
             label="Delete"
             className="text-destructive hover:bg-destructive/10"
+          />
+          <ToolbarButton
+            onClick={() => handleTypeSelect(AnnotationType.REPLACEMENT)}
+            icon={
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+                />
+              </svg>
+            }
+            label="Replace"
+            className="text-orange-500 hover:bg-orange-500/10"
           />
           <ToolbarButton
             onClick={() => handleTypeSelect(AnnotationType.COMMENT)}
@@ -166,7 +193,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             rows={1}
             className="bg-transparent text-sm min-w-44 max-w-80 max-h-32 placeholder:text-muted-foreground resize-none px-2 py-1.5 focus:outline-none focus:bg-muted/30"
             style={{ fieldSizing: "content" } as React.CSSProperties}
-            placeholder="Add a comment..."
+            placeholder={getPlaceholder()}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => {

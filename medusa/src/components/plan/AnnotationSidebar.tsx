@@ -93,9 +93,16 @@ export const AnnotationSidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
-              {/* Comment text */}
+              {/* Comment/Replacement text */}
               {(ann.text && ann.type !== AnnotationType.DELETION) && (
-                <div className="text-sm text-foreground pl-2 border-l-2 border-primary">
+                <div className={`text-sm text-foreground pl-2 border-l-2 ${
+                  ann.type === AnnotationType.REPLACEMENT
+                    ? 'border-orange-500'
+                    : 'border-primary'
+                }`}>
+                  {ann.type === AnnotationType.REPLACEMENT && (
+                    <span className="text-orange-500 text-xs font-medium mr-1">→</span>
+                  )}
                   {ann.text}
                 </div>
               )}

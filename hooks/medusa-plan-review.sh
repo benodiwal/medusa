@@ -49,13 +49,8 @@ EOF
 MEDUSA_APP="/Applications/medusa.app"
 open -a "$MEDUSA_APP" 2>/dev/null || true
 
-# Read timeout from settings
-SETTINGS_FILE="$HOME/.medusa/settings.json"
-TIMEOUT_MINUTES=$(jq -r '.hook_timeout_minutes // 10' "$SETTINGS_FILE" 2>/dev/null || echo "10")
-TIMEOUT=$((TIMEOUT_MINUTES * 60))
-COUNT=0
-
-while [ $COUNT -lt $TIMEOUT ]; do
+# Wait indefinitely for response
+while true; do
     if [ -f "$RESPONSE_FILE" ] && [ -s "$RESPONSE_FILE" ]; then
         RESPONSE=$(cat "$RESPONSE_FILE")
         rm -f "$RESPONSE_FILE"
@@ -71,8 +66,4 @@ while [ $COUNT -lt $TIMEOUT ]; do
         fi
     fi
     sleep 1
-    COUNT=$((COUNT + 1))
 done
-
-echo "Plan review timed out after $TIMEOUT_MINUTES minutes. Adjust in Medusa Settings." >&2
-exit 2

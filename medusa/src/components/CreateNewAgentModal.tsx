@@ -30,7 +30,7 @@ interface CreateNewAgentModalProps {
 export const CreateNewAgentModal = ({ children, open, onOpenChange }: CreateNewAgentModalProps) => {
   const [message, setMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("sonnet");
-  const { createAgent, isLoading: isCreatingAgent, error: agentError } = useAgent();
+  const { createAgent, isLoading: isCreatingAgent, error: _agentError } = useAgent();
   const navigate = useNavigate();
 
   const modelOptions = [
@@ -43,7 +43,7 @@ export const CreateNewAgentModal = ({ children, open, onOpenChange }: CreateNewA
     if (!message.trim()) return;
 
     try {
-      const agentId = await createAgent(message.trim(), selectedModel);
+      await createAgent(message.trim(), selectedModel);
       setMessage("");
       onOpenChange?.(false);
       navigate('/agent');
