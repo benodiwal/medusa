@@ -14,6 +14,7 @@ When Claude Code enters plan mode, Medusa intercepts the plan via a hook and pre
 - Add inline annotations (comments, deletions, suggested changes)
 - Approve plans or request changes with feedback
 - View diffs between plan revisions
+- Browse history of reviewed plans with search
 - Save plans to Obsidian
 
 Claude Code waits for your decision before proceeding.
@@ -77,6 +78,7 @@ See [hooks/claude-settings.json](hooks/claude-settings.json) for the full config
 
 - `~/.medusa/queue.json` - Plan queue
 - `~/.medusa/settings.json` - App settings
+- `~/.medusa/history.db` - SQLite database for reviewed plans history
 - `~/.medusa/pending/` - Incoming plans from hook
 
 ## Stack
