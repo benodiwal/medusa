@@ -67,6 +67,7 @@ export default function Docs() {
                 { href: "#kanban", label: "Managing multiple plans" },
                 { href: "#diffs", label: "Viewing revision diffs" },
                 { href: "#obsidian", label: "Exporting to Obsidian" },
+                { href: "#sharing", label: "Sharing plans" },
                 { href: "#settings", label: "Configuration" },
               ].map((item) => (
                 <li key={item.href}>
@@ -566,10 +567,89 @@ done`}</pre>
           {/* Divider */}
           <div className="w-full h-px mb-12 sm:mb-16" style={{backgroundColor: '#D2691E', opacity: 0.2}}></div>
 
+          {/* Section: Sharing */}
+          <section id="sharing" className="mb-12 sm:mb-16 scroll-mt-24">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>08</span>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Sharing plans</h2>
+            </div>
+
+            <div className="prose prose-lg max-w-none">
+              <p className="text-base sm:text-lg leading-relaxed mb-6" style={{color: '#6B5B47'}}>
+                Collaborate with your team by sharing plans for review. Share URLs contain the entire
+                plan compressed in the URL—no backend required, works entirely client-side.
+              </p>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>How sharing works</h3>
+              <div className="space-y-4 mb-6">
+                {[
+                  {
+                    step: "1",
+                    title: "Share from Medusa",
+                    description: "Click the Share button in the plan review modal. A URL is generated with your plan and annotations compressed using lz-string."
+                  },
+                  {
+                    step: "2",
+                    title: "Recipients view and annotate",
+                    description: "Anyone with the link can view the plan at heymedusa.net/share. They can add their own annotations and comments."
+                  },
+                  {
+                    step: "3",
+                    title: "Re-share with combined feedback",
+                    description: "Recipients can generate a new share URL that includes both the original and their new annotations."
+                  }
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-4 p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold" style={{backgroundColor: '#D2691E', color: 'white'}}>
+                      {item.step}
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1" style={{color: '#6B5B47'}}>{item.title}</h4>
+                      <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Collaborative annotations</h3>
+              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
+                When viewing a shared plan, you&apos;ll see annotations from the original reviewer.
+                Their annotations are read-only, but you can add your own comments, deletions,
+                and replacements. Each reviewer&apos;s annotations are tracked separately.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Original annotations</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Highlighted and attributed to the original reviewer. Read-only for recipients.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Your annotations</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Add your own feedback. These can be edited or deleted before re-sharing.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
+                <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>No account required</h4>
+                <p className="text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
+                  Sharing works without any sign-up or authentication. The plan data is entirely
+                  contained in the URL, so anyone with the link can view and annotate.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="w-full h-px mb-12 sm:mb-16" style={{backgroundColor: '#D2691E', opacity: 0.2}}></div>
+
           {/* Section: Settings */}
           <section id="settings" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>08</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>09</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Configuration</h2>
             </div>
 

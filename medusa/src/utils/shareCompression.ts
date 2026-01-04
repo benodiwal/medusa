@@ -25,7 +25,7 @@ export function decompressPlan(compressed: string): ShareablePlan | null {
 /**
  * Base URL for sharing - use web app URL
  */
-const SHARE_BASE_URL = import.meta.env.VITE_SHARE_URL || 'http://localhost:3001';
+const SHARE_BASE_URL = import.meta.env.VITE_SHARE_URL || 'https://heymedusa.net';
 
 /**
  * Generate a share URL from a ShareablePlan
