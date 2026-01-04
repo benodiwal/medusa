@@ -205,26 +205,31 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
           return;
         }
 
-        // Use web-highlighter's fromStore to recreate the highlight from stored metadata
+        // Try web-highlighter's fromStore first if metadata exists
+        let highlightCreated = false;
         if (ann.startMeta && ann.endMeta && ann.originalText) {
-          highlighter.fromStore(ann.startMeta, ann.endMeta, ann.originalText, ann.id);
-
-          // Apply the appropriate CSS class based on annotation type
-          const doms = highlighter.getDoms(ann.id);
-          if (doms?.length > 0) {
-            if (ann.type === AnnotationType.DELETION) {
-              highlighter.addClass('deletion', ann.id);
-            } else if (ann.type === AnnotationType.COMMENT) {
-              highlighter.addClass('comment', ann.id);
-            } else if (ann.type === AnnotationType.REPLACEMENT) {
-              highlighter.addClass('replacement', ann.id);
+          try {
+            highlighter.fromStore(ann.startMeta, ann.endMeta, ann.originalText, ann.id);
+            const doms = highlighter.getDoms(ann.id);
+            if (doms?.length > 0) {
+              highlightCreated = true;
+              if (ann.type === AnnotationType.DELETION) {
+                highlighter.addClass('deletion', ann.id);
+              } else if (ann.type === AnnotationType.COMMENT) {
+                highlighter.addClass('comment', ann.id);
+              } else if (ann.type === AnnotationType.REPLACEMENT) {
+                highlighter.addClass('replacement', ann.id);
+              }
             }
+          } catch {
+            // fromStore failed, will fall back to text search
           }
-        } else if (ann.originalText) {
-          // Fallback for legacy URLs without startMeta/endMeta: find text across DOM nodes
-          const textToFind = ann.originalText;
+        }
 
-          // Search entire container since blockId might not match
+        // Fall back to text search if fromStore didn't work or metadata missing
+        if (!highlightCreated && ann.originalText) {
+          // Text search fallback: find text across DOM nodes
+          const textToFind = ann.originalText;
           const searchRoot = container;
 
           // Collect all text nodes and build accumulated string
@@ -242,12 +247,8 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
             accumulated += node.textContent || '';
           }
 
-          console.log('Looking for:', textToFind);
-          console.log('In accumulated text:', accumulated.substring(0, 500));
-
           // Find text in accumulated string
           const index = accumulated.indexOf(textToFind);
-          console.log('Found at index:', index);
 
           if (index !== -1) {
             const endIndex = index + textToFind.length;
@@ -273,21 +274,15 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
               }
             }
 
-            console.log('Start node:', startNode, 'offset:', startOffset);
-            console.log('End node:', endNode, 'offset:', endOffset);
-
             if (startNode && endNode) {
               try {
                 const range = document.createRange();
                 range.setStart(startNode, startOffset);
                 range.setEnd(endNode, endOffset);
 
-                console.log('Range created, checking fromRange method:', typeof highlighter.fromRange);
-
-                // Check if fromRange exists
+                // Use fromRange if available to get proper metadata
                 if (typeof highlighter.fromRange === 'function') {
                   const tempSource = highlighter.fromRange(range);
-                  console.log('tempSource:', tempSource);
                   if (tempSource) {
                     highlighter.remove(tempSource.id);
                     highlighter.fromStore(tempSource.startMeta, tempSource.endMeta, textToFind, ann.id);
@@ -299,11 +294,9 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
                     } else if (ann.type === AnnotationType.REPLACEMENT) {
                       highlighter.addClass('replacement', ann.id);
                     }
-                    console.log('Highlight created for:', ann.id);
                   }
-                } else {
-                  // fromRange doesn't exist, try manual mark creation
-                  console.log('fromRange not available, trying manual approach');
+                } else if (startNode === endNode) {
+                  // Manual fallback for same-node ranges
                   const mark = document.createElement('mark');
                   mark.className = 'annotation-highlight';
                   mark.dataset.highlightId = ann.id;
@@ -316,23 +309,14 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
                     mark.classList.add('replacement');
                   }
 
-                  // For same-node ranges, use surroundContents
-                  if (startNode === endNode) {
-                    range.surroundContents(mark);
-                    console.log('Same-node highlight created');
-                  } else {
-                    // For cross-node, we need to highlight each text node separately
-                    console.log('Cross-node highlight - complex case');
-                  }
+                  range.surroundContents(mark);
                 }
 
                 window.getSelection()?.removeAllRanges();
-              } catch (e) {
-                console.warn('Cross-node highlight failed:', ann.id, e);
+              } catch {
+                // Highlight creation failed silently
               }
             }
-          } else {
-            console.warn('Text not found in document:', textToFind);
           }
         }
       } catch (e) {
