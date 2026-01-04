@@ -29,13 +29,6 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (optional) | - |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (optional) | - |
-
 ## Deployment
 
 Deploy to Vercel or any Next.js-compatible hosting:
