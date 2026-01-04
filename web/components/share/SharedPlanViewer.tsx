@@ -15,7 +15,6 @@ interface SharedViewerProps {
   annotations: ShareableAnnotation[];
   onAddAnnotation: (ann: Annotation) => void;
   onSelectAnnotation: (id: string | null) => void;
-  onRemoveAnnotation?: (id: string) => void;
   selectedAnnotationId: string | null;
   readOnlyAnnotationIds?: string[];
 }
@@ -30,7 +29,6 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
   annotations,
   onAddAnnotation,
   onSelectAnnotation,
-  onRemoveAnnotation,
   selectedAnnotationId: _selectedAnnotationId,
   readOnlyAnnotationIds = [],
 }, ref) => {
@@ -43,8 +41,6 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
   const [toolbarState, setToolbarState] = useState<{ element: HTMLElement; source: any } | null>(null);
   const [clickedAnnotation, setClickedAnnotation] = useState<{ id: string; element: HTMLElement; isReadOnly: boolean } | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [hoveredCodeBlock, setHoveredCodeBlock] = useState<{ block: Block; element: HTMLElement; annotation?: ShareableAnnotation } | null>(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load client-only modules
   useEffect(() => {
@@ -318,35 +314,9 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
           </button>
         </div>
 
-        {blocks.map(block => {
-          if (block.type === 'code') {
-            const blockAnnotation = annotations.find(a => a.blockId === block.id);
-            const isReadOnly = blockAnnotation ? readOnlyAnnotationIds.includes(blockAnnotation.id) : false;
-            return (
-              <CodeBlock
-                key={block.id}
-                block={block}
-                existingAnnotation={blockAnnotation}
-                isReadOnly={isReadOnly}
-                onHover={(element) => {
-                  if (hoverTimeoutRef.current) {
-                    clearTimeout(hoverTimeoutRef.current);
-                    hoverTimeoutRef.current = null;
-                  }
-                  if (!toolbarState) {
-                    setHoveredCodeBlock({ block, element, annotation: blockAnnotation });
-                  }
-                }}
-                onLeave={() => {
-                  hoverTimeoutRef.current = setTimeout(() => {
-                    setHoveredCodeBlock(null);
-                  }, 100);
-                }}
-              />
-            );
-          }
-          return <BlockRenderer key={block.id} block={block} />;
-        })}
+        {blocks.map(block => (
+          <BlockRenderer key={block.id} block={block} />
+        ))}
 
         <Toolbar
           highlightElement={toolbarState?.element ?? null}
@@ -354,51 +324,10 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
           onClose={handleToolbarClose}
         />
 
-        {/* Code block toolbar */}
-        {mounted && hoveredCodeBlock && !toolbarState && (
-          <CodeBlockToolbar
-            element={hoveredCodeBlock.element}
-            existingAnnotation={hoveredCodeBlock.annotation}
-            isReadOnly={hoveredCodeBlock.annotation ? readOnlyAnnotationIds.includes(hoveredCodeBlock.annotation.id) : false}
-            onRemove={() => {
-              if (hoveredCodeBlock.annotation && onRemoveAnnotation) {
-                onRemoveAnnotation(hoveredCodeBlock.annotation.id);
-              }
-              setHoveredCodeBlock(null);
-            }}
-            onClose={() => setHoveredCodeBlock(null)}
-            onMouseEnter={() => {
-              if (hoverTimeoutRef.current) {
-                clearTimeout(hoverTimeoutRef.current);
-                hoverTimeoutRef.current = null;
-              }
-            }}
-            onMouseLeave={() => {
-              hoverTimeoutRef.current = setTimeout(() => {
-                setHoveredCodeBlock(null);
-              }, 100);
-            }}
-          />
-        )}
-
         {/* Info tooltip for read-only annotations */}
         {mounted && clickedAnnotation && clickedAnnotation.isReadOnly && (
           <ReadOnlyTooltip
             element={clickedAnnotation.element}
-            onClose={() => setClickedAnnotation(null)}
-          />
-        )}
-
-        {/* Delete tooltip for own annotations */}
-        {mounted && clickedAnnotation && !clickedAnnotation.isReadOnly && (
-          <AnnotationActionTooltip
-            element={clickedAnnotation.element}
-            onRemove={() => {
-              if (onRemoveAnnotation) {
-                onRemoveAnnotation(clickedAnnotation.id);
-              }
-              setClickedAnnotation(null);
-            }}
             onClose={() => setClickedAnnotation(null)}
           />
         )}
@@ -529,17 +458,8 @@ const InlineMarkdown: React.FC<{ text: string }> = ({ text }) => {
   return <>{parts}</>;
 };
 
-interface CodeBlockProps {
-  block: Block;
-  existingAnnotation?: ShareableAnnotation;
-  isReadOnly?: boolean;
-  onHover?: (element: HTMLElement) => void;
-  onLeave?: () => void;
-}
-
-const CodeBlock: React.FC<CodeBlockProps> = ({ block, existingAnnotation: _existingAnnotation, isReadOnly: _isReadOnly, onHover, onLeave }) => {
+const CodeBlock: React.FC<{ block: Block }> = ({ block }) => {
   const [copied, setCopied] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -560,26 +480,10 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ block, existingAnnotation: _exist
     }
   };
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-    if (containerRef.current && onHover) {
-      onHover(containerRef.current);
-    }
-  };
-
   return (
-    <div
-      ref={containerRef}
-      className="relative group my-5"
-      data-block-id={block.id}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={onLeave}
-    >
+    <div className="relative group my-5" data-block-id={block.id}>
       <button
         onClick={handleCopy}
-        onMouseEnter={() => onLeave?.()}
         className="absolute top-2 right-2 p-1.5 rounded-md bg-[#f3f1e8]/80 hover:bg-[#e5e2db] text-[#6B5B47] hover:text-[#16110a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
       >
         {copied ? (
@@ -598,57 +502,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ block, existingAnnotation: _exist
         </code>
       </pre>
     </div>
-  );
-};
-
-const AnnotationActionTooltip: React.FC<{ element: HTMLElement; onRemove: () => void; onClose: () => void }> = ({ element, onRemove, onClose }) => {
-  const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-
-  useEffect(() => {
-    const rect = element.getBoundingClientRect();
-    setPosition({
-      top: rect.top - 44,
-      left: rect.left + rect.width / 2,
-    });
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.annotation-action-tooltip')) {
-        onClose();
-      }
-    };
-    setTimeout(() => document.addEventListener('click', handleClickOutside), 0);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [element, onClose]);
-
-  return createPortal(
-    <div
-      className="annotation-action-tooltip fixed z-[100] bg-white border border-[#e5e2db] rounded-lg shadow-xl transform -translate-x-1/2"
-      style={{ top: position.top, left: position.left }}
-    >
-      <div className="flex items-center p-1 gap-0.5">
-        <button
-          onClick={onRemove}
-          title="Remove annotation"
-          className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-red-600 hover:bg-red-50 text-xs font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Remove
-        </button>
-        <div className="w-px h-5 bg-[#e5e2db] mx-0.5" />
-        <button
-          onClick={onClose}
-          title="Cancel"
-          className="p-1.5 rounded-md transition-colors text-[#6B5B47] hover:bg-[#f3f1e8]"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>,
-    document.body
   );
 };
 
@@ -678,82 +531,3 @@ const ReadOnlyTooltip: React.FC<{ element: HTMLElement; onClose: () => void }> =
   );
 };
 
-interface CodeBlockToolbarProps {
-  element: HTMLElement;
-  existingAnnotation?: ShareableAnnotation;
-  isReadOnly: boolean;
-  onRemove: () => void;
-  onClose: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-}
-
-const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
-  element,
-  existingAnnotation,
-  isReadOnly,
-  onRemove,
-  onClose,
-  onMouseEnter,
-  onMouseLeave,
-}) => {
-  const [position, setPosition] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
-
-  useEffect(() => {
-    const updatePosition = () => {
-      const rect = element.getBoundingClientRect();
-      setPosition({
-        top: rect.top - 40,
-        right: window.innerWidth - rect.right,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [element]);
-
-  // Only show toolbar if there's an annotation that can be removed
-  if (!existingAnnotation || isReadOnly) {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      className="fixed z-[100] bg-white border border-[#e5e2db] rounded-lg shadow-xl"
-      style={{ top: position.top, right: position.right }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="flex items-center p-1 gap-0.5">
-        <button
-          onClick={onRemove}
-          title="Remove annotation"
-          className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-red-600 hover:bg-red-50 text-xs font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Remove
-        </button>
-        <div className="w-px h-5 bg-[#e5e2db] mx-0.5" />
-        <button
-          onClick={onClose}
-          title="Cancel"
-          className="p-1.5 rounded-md transition-colors text-[#6B5B47] hover:bg-[#f3f1e8]"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-};
