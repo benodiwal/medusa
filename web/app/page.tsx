@@ -4,7 +4,10 @@ import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
 import ShareFeature from "../components/landing/ShareFeature";
 import Image from "next/image";
+import Link from "next/link";
 import DownloadButton from "../components/DownloadButton";
+
+const DEMO_URL = "/share#N4IgLglmA2CmIC4QEEAmqAEBVAzrAThsgK5gAWsAdpAMYCGkA9pSADQg3NhViIgDERdNjyES5HhHpNKAHTmV+ggPIA3AqoiwA7vICSAWwAOcAzwwApAOoAVALQAjOnkx1SFalIYRmGAGaMhBIYdEYmXjIAdPLyShiGJrBm1N6+AMrcRjgxinEAjJEYAEJ0NADWVJgAwmR0lADmsNmUdkKYDjT4AJ5GYP6BGEbOONqBmLU4ZBAN8q1V+LAMsCHuGAYQ6HDadAv9hEb4jNw03JiHpE2z8cam5gD0oRB30Iz10yGUmA9GTwtvONxCJUjIxpmBmq00JhrDYMGBGBVKBhGpQCKkkXVMKo6NANuickpBAAmQoAMUO1EqGBqdUaEOpCyWGBebwxnwwfwgAIIewM9KhK3IGE4lIAHn0AoQAUyDHU6I1kmArglbtRBodjqcOYwLhhtPhQkYCFcMoFlvDETgMO8yGAwEZlJRoF1hYwEVpmrE4gBmQoAEQYdCceAwaRoFFlVwFxFEVrAQbgeqgZAwSToEGgrEGw1G+FQAH0JmQs51Fqd8wwo8I8DgcD5KHGE8tJRzYH4FpM4QiqJ7chgbE1IA0MAAFaB1K5YShQOGDq0ttxC9abHQ7WDKyn1A0yWcA+cDFnvPwvXQtDAAUSJ5934L2rf+YG39fkbA4jNOyF4CDyAHYAGw-gArHkRJ-kSeQAJwABwQewkxrqgRRdHwyC4jQ8BwbUCyoJ+iC-gBwGgeB0GwSAdSUEc6I4IgADaoAbHw5F2DiUiwHYeSvg4LzlHoqB8FxjDlOxr7SvgYDKH4fh4F+AAM7CVBJUmwF+IHsGAPTwEgVTKAAsjp54AHI2K+3DinwAAybplFa9RuqgACE1LMHWqA8nQ6DTPUHJMri6xDvUkSvoEECsjiA5mUgMKOM4sCuO4kjSPWr6lksOEqf+QEgWBkEwewi5kIEBl0GYKFoRhZHuIEVSMC8+B8Pwf5FIBRQACw-iAAC+rD0XxSBMQ4jAOMJ7ACTxvUgKNZR2ESInxmJinSYgckgApkmLQgRLLepRp8H657meeNh6MoBkmbAEUgGkBXENAmAxssOy2ZQRLWg23DuUF+AhdMYXnV+E2dD0EoDEMta5uMzhTA0yXvrFuHfhlhHZSReWVfgRUlUgRSDa++VVTVgT1VBRQ-t6gGAZ13UgAxfWUC0A1DTNI3cWUvH8SzdjerNOziWtylLfJnwLfz36AWpGl8NpemGcZal-ShwgEIchC1J8uLDi2sWNMKMXUewwWhdA4X-QcRywCcsXahcetvmWcPpQRWXEblFXkIVxWaSA2MOLjaPVbVRMk2TFMdQAuuw6j4HWzB4R1QA";
 
 export default function Home() {
   return (
@@ -73,6 +76,18 @@ export default function Home() {
       <ShareFeature />
 
       <Footer />
+
+      {/* Mobile Floating Demo Button */}
+      <Link
+        href={DEMO_URL}
+        className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-[#6B5B47] text-white rounded-full shadow-lg hover:opacity-90 transition-opacity"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-sm font-medium">Try Demo</span>
+      </Link>
     </div>
   );
 }

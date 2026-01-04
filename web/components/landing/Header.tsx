@@ -30,7 +30,7 @@ const Header = () => {
               </a>
               <a
                 href="/pricing"
-                className="text-sm font-medium hover:underline hidden sm:block"
+                className="text-sm font-medium hover:underline"
                 style={{color: '#6B5B47'}}
               >
                 Pricing
@@ -39,7 +39,7 @@ const Header = () => {
                 href="https://screen.studio/share/VWB7nmog"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium hover:underline hidden sm:block"
+                className="text-sm font-medium hover:underline"
                 style={{color: '#6B5B47'}}
               >
                 Demo
