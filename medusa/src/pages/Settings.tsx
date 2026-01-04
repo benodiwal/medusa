@@ -109,7 +109,7 @@ const Settings = () => {
                 />
                 <div>
                   <h3 className="text-sm font-medium text-foreground">Medusa</h3>
-                  <p className="text-xs text-muted-foreground">Version 0.1.0</p>
+                  <p className="text-xs text-muted-foreground">Version 0.1.1</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
