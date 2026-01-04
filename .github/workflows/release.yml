@@ -31,11 +31,16 @@ jobs:
           workspaces: medusa/src-tauri
 
       - name: Install Apple certificate
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
+          # Skip if no certificate provided
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "No Apple certificate provided, skipping code signing setup"
+            exit 0
+          fi
+
           # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
