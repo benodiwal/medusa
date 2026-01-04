@@ -1,6 +1,6 @@
 # Medusa Web
 
-Web companion for the [Medusa](https://github.com/anthropics/medusa) desktop app - a plan review tool for Claude Code.
+Web companion for the [Medusa](https://github.com/benodiwal/medusa) desktop app - a plan review tool for Claude Code.
 
 ## Features
 
