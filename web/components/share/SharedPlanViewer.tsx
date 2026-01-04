@@ -507,7 +507,25 @@ const InlineMarkdown: React.FC<{ text: string }> = ({ text }) => {
       continue;
     }
 
-    const nextSpecial = remaining.slice(1).search(/[\*`]/);
+    // Link support - same as desktop
+    match = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+    if (match) {
+      parts.push(
+        <a
+          key={key++}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#D2691E] underline underline-offset-2 hover:text-[#D2691E]/80"
+        >
+          {match[1]}
+        </a>
+      );
+      remaining = remaining.slice(match[0].length);
+      continue;
+    }
+
+    const nextSpecial = remaining.slice(1).search(/[\*`\[]/);
     if (nextSpecial === -1) {
       parts.push(remaining);
       break;
