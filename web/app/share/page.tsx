@@ -279,6 +279,7 @@ export default function SharePage() {
               annotations={allAnnotations}
               onAddAnnotation={handleAddAnnotation}
               onSelectAnnotation={setSelectedAnnotationId}
+              onRemoveAnnotation={handleDeleteLocalAnnotation}
               selectedAnnotationId={selectedAnnotationId}
               readOnlyAnnotationIds={readOnlyIds}
             />

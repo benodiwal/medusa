@@ -78,7 +78,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
   const isRestoringRef = useRef(false);
   const [toolbarState, setToolbarState] = useState<{ element: HTMLElement; source: any } | null>(null);
   const [clickedAnnotation, setClickedAnnotation] = useState<{ id: string; element: HTMLElement } | null>(null);
-  const [hoveredCodeBlock, setHoveredCodeBlock] = useState<{ block: Block; element: HTMLElement } | null>(null);
+  const [hoveredCodeBlock, setHoveredCodeBlock] = useState<{ block: Block; element: HTMLElement; annotation?: Annotation } | null>(null);
   const [isCodeBlockToolbarExiting, setIsCodeBlockToolbarExiting] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -449,11 +449,16 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
           </button>
         </div>
 
-        {blocks.map(block => (
-          block.type === 'code' ? (
+        {blocks.map(block => {
+          const blockAnnotation = block.type === 'code'
+            ? annotations.find(a => a.blockId === block.id)
+            : undefined;
+
+          return block.type === 'code' ? (
             <CodeBlock
               key={block.id}
               block={block}
+              existingAnnotation={blockAnnotation}
               onHover={(element) => {
                 if (hoverTimeoutRef.current) {
                   clearTimeout(hoverTimeoutRef.current);
@@ -461,7 +466,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
                 }
                 setIsCodeBlockToolbarExiting(false);
                 if (!toolbarState) {
-                  setHoveredCodeBlock({ block, element });
+                  setHoveredCodeBlock({ block, element, annotation: blockAnnotation });
                 }
               }}
               onLeave={() => {
@@ -477,8 +482,8 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
             />
           ) : (
             <BlockRenderer key={block.id} block={block} />
-          )
-        ))}
+          );
+        })}
 
         <Toolbar
           highlightElement={toolbarState?.element ?? null}
@@ -489,7 +494,14 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
         {hoveredCodeBlock && !toolbarState && (
           <CodeBlockToolbar
             element={hoveredCodeBlock.element}
+            existingAnnotation={hoveredCodeBlock.annotation}
             onAnnotate={handleCodeBlockAnnotate}
+            onRemove={() => {
+              if (hoveredCodeBlock.annotation) {
+                onRemoveAnnotationRef.current(hoveredCodeBlock.annotation.id);
+                setHoveredCodeBlock(null);
+              }
+            }}
             onClose={handleCodeBlockToolbarClose}
             isExiting={isCodeBlockToolbarExiting}
             onMouseEnter={() => {
@@ -723,12 +735,13 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 
 interface CodeBlockProps {
   block: Block;
+  existingAnnotation?: Annotation;
   onHover?: (element: HTMLElement) => void;
   onLeave?: () => void;
   isHovered?: boolean;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ block, onHover, onLeave, isHovered: _isHovered }) => {
+const CodeBlock: React.FC<CodeBlockProps> = ({ block, existingAnnotation: _existingAnnotation, onHover, onLeave, isHovered: _isHovered }) => {
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLElement>(null);
@@ -751,7 +764,11 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ block, onHover, onLeave, isHovere
     }
   }, [block.content]);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    // Don't show code block toolbar when hovering over the copy button
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
     if (containerRef.current && onHover) {
       onHover(containerRef.current);
     }
@@ -769,6 +786,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ block, onHover, onLeave, isHovere
     >
       <button
         onClick={handleCopy}
+        onMouseEnter={() => onLeave?.()}
         className="absolute top-2 right-2 p-1.5 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
         title={copied ? 'Copied!' : 'Copy code'}
       >
@@ -791,12 +809,14 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ block, onHover, onLeave, isHovere
 
 const CodeBlockToolbar: React.FC<{
   element: HTMLElement;
+  existingAnnotation?: Annotation;
   onAnnotate: (type: AnnotationType, text?: string) => void;
+  onRemove: () => void;
   onClose: () => void;
   isExiting: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-}> = ({ element, onAnnotate, onClose, isExiting, onMouseEnter, onMouseLeave }) => {
+}> = ({ element, existingAnnotation, onAnnotate, onRemove, onClose, isExiting, onMouseEnter, onMouseLeave }) => {
   const [step, setStep] = useState<'menu' | 'input'>('menu');
   const [inputValue, setInputValue] = useState('');
   const [position, setPosition] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
@@ -870,25 +890,45 @@ const CodeBlockToolbar: React.FC<{
       `}</style>
       {step === 'menu' ? (
         <div className="flex items-center p-1 gap-0.5">
-          <button
-            onClick={() => onAnnotate(AnnotationType.DELETION)}
-            title="Delete"
-            className="p-1.5 rounded-md transition-colors text-destructive hover:bg-destructive/10"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setStep('input')}
-            title="Comment"
-            className="p-1.5 rounded-md transition-colors text-accent hover:bg-accent/10"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-          </button>
-          <div className="w-px h-5 bg-border mx-0.5" />
+          {existingAnnotation ? (
+            // Show remove option for existing annotation
+            <>
+              <button
+                onClick={onRemove}
+                title="Remove annotation"
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-destructive hover:bg-destructive/10 text-xs font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Remove
+              </button>
+              <div className="w-px h-5 bg-border mx-0.5" />
+            </>
+          ) : (
+            // Show add annotation options
+            <>
+              <button
+                onClick={() => onAnnotate(AnnotationType.DELETION)}
+                title="Delete"
+                className="p-1.5 rounded-md transition-colors text-destructive hover:bg-destructive/10"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setStep('input')}
+                title="Comment"
+                className="p-1.5 rounded-md transition-colors text-accent hover:bg-accent/10"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+              </button>
+              <div className="w-px h-5 bg-border mx-0.5" />
+            </>
+          )}
           <button
             onClick={onClose}
             title="Cancel"

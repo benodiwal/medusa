@@ -96,10 +96,16 @@ body {
 }
 
 /* Highlight.js github-light theme */
-.hljs {
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
   color: #24292e;
-  background: #f3f1e8;
+  background: #f3f1e8 !important;
   padding: 1em;
+}
+
+code.hljs {
+  background: #f3f1e8 !important;
 }
 
 .hljs-doctag,
