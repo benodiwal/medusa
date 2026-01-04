@@ -70,7 +70,7 @@ chmod +x ~/.claude/hooks/medusa-plan-review.sh
           {
             "type": "command",
             "command": "~/.claude/hooks/medusa-plan-review.sh",
-            "timeout": 3600
+            "timeout": 86400
           }
         ]
       }
@@ -79,7 +79,7 @@ chmod +x ~/.claude/hooks/medusa-plan-review.sh
 }
 ```
 
-**Important:** The `timeout` value (in seconds) controls how long Claude Code waits for your review. Default is 60 seconds which is too short. Set it to `3600` (1 hour) or higher for comfortable review time.
+**Important:** The `timeout` value (in seconds) controls how long Claude Code waits for your review. If the timeout is reached, Claude Code will **automatically proceed without approval**. Set it to `86400` (24 hours) to avoid this.
 
 See [hooks/claude-settings.json](hooks/claude-settings.json) for the full configuration.
 

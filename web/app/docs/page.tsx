@@ -166,7 +166,7 @@ export default function Docs() {
           {
             "type": "command",
             "command": "/path/to/medusa-plan-review.sh",
-            "timeout": 3600
+            "timeout": 86400
           }
         ]
       }
@@ -175,12 +175,12 @@ export default function Docs() {
 }`}</pre>
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
-                <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>About the timeout</h4>
-                <p className="text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
-                  The <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>timeout</code> value is in seconds.
-                  Claude Code&apos;s default is 60 seconds, which is too short for plan review.
-                  Set it to <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>3600</code> (1 hour) or higher.
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FEF2F2', borderColor: '#EF4444'}}>
+                <h4 className="font-bold mb-2" style={{color: '#991B1B'}}>Important: Set a long timeout</h4>
+                <p className="text-sm sm:text-base" style={{color: '#991B1B', opacity: 0.9}}>
+                  The <code className="px-1 rounded" style={{backgroundColor: '#FEE2E2'}}>timeout</code> value is in seconds.
+                  If the timeout is reached before you approve or reject, Claude Code will <strong>automatically proceed without your approval</strong>.
+                  Set it to <code className="px-1 rounded" style={{backgroundColor: '#FEE2E2'}}>86400</code> (24 hours) to avoid this.
                 </p>
               </div>
 
