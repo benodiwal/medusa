@@ -179,7 +179,7 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
     return () => highlighter.dispose();
   }, [onSelectAnnotation, readOnlyAnnotationIds, mounted]);
 
-  // Restore annotations by finding text in DOM
+  // Restore annotations using web-highlighter's fromStore method (same as desktop)
   useEffect(() => {
     const highlighter = highlighterRef.current;
     const container = containerRef.current;
@@ -187,78 +187,156 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
 
     isRestoringRef.current = true;
 
-    // Clear any existing highlights first
-    annotations.forEach(ann => {
-      try {
-        highlighter.remove(ann.id);
-      } catch {
-        // ignore
-      }
-    });
-
     annotations.forEach(ann => {
       try {
         if (ann.type === AnnotationType.GLOBAL_COMMENT) return;
-        if (!ann.originalText) return;
 
-        // Find the text in the DOM and create a range
-        const textToFind = ann.originalText;
-        const blockElement = container.querySelector(`[data-block-id="${ann.blockId}"]`);
-        const searchRoot = blockElement || container;
+        // Check if highlight already exists
+        const existingDoms = highlighter.getDoms(ann.id);
+        if (existingDoms && existingDoms.length > 0) {
+          // Already highlighted, just ensure correct class
+          if (ann.type === AnnotationType.DELETION) {
+            highlighter.addClass('deletion', ann.id);
+          } else if (ann.type === AnnotationType.COMMENT) {
+            highlighter.addClass('comment', ann.id);
+          } else if (ann.type === AnnotationType.REPLACEMENT) {
+            highlighter.addClass('replacement', ann.id);
+          }
+          return;
+        }
 
-        // Use TreeWalker to find text nodes
-        const walker = document.createTreeWalker(
-          searchRoot,
-          NodeFilter.SHOW_TEXT,
-          null
-        );
+        // Use web-highlighter's fromStore to recreate the highlight from stored metadata
+        if (ann.startMeta && ann.endMeta && ann.originalText) {
+          highlighter.fromStore(ann.startMeta, ann.endMeta, ann.originalText, ann.id);
 
-        let node: Node | null;
-        let found = false;
+          // Apply the appropriate CSS class based on annotation type
+          const doms = highlighter.getDoms(ann.id);
+          if (doms?.length > 0) {
+            if (ann.type === AnnotationType.DELETION) {
+              highlighter.addClass('deletion', ann.id);
+            } else if (ann.type === AnnotationType.COMMENT) {
+              highlighter.addClass('comment', ann.id);
+            } else if (ann.type === AnnotationType.REPLACEMENT) {
+              highlighter.addClass('replacement', ann.id);
+            }
+          }
+        } else if (ann.originalText) {
+          // Fallback for legacy URLs without startMeta/endMeta: find text across DOM nodes
+          const textToFind = ann.originalText;
 
-        while ((node = walker.nextNode()) && !found) {
-          const textContent = node.textContent || '';
-          const index = textContent.indexOf(textToFind);
+          // Search entire container since blockId might not match
+          const searchRoot = container;
+
+          // Collect all text nodes and build accumulated string
+          const walker = document.createTreeWalker(searchRoot, NodeFilter.SHOW_TEXT, null);
+          const textNodes: { node: Node; start: number; text: string }[] = [];
+          let accumulated = '';
+
+          let node: Node | null;
+          while ((node = walker.nextNode())) {
+            textNodes.push({
+              node,
+              start: accumulated.length,
+              text: node.textContent || ''
+            });
+            accumulated += node.textContent || '';
+          }
+
+          console.log('Looking for:', textToFind);
+          console.log('In accumulated text:', accumulated.substring(0, 500));
+
+          // Find text in accumulated string
+          const index = accumulated.indexOf(textToFind);
+          console.log('Found at index:', index);
 
           if (index !== -1) {
-            // Found the text, create a range and highlight it
-            const range = document.createRange();
-            range.setStart(node, index);
-            range.setEnd(node, index + textToFind.length);
+            const endIndex = index + textToFind.length;
 
-            // Use highlighter to create from range
-            const selection = window.getSelection();
-            selection?.removeAllRanges();
-            selection?.addRange(range);
+            // Find start and end nodes/offsets
+            let startNode: Node | null = null;
+            let startOffset = 0;
+            let endNode: Node | null = null;
+            let endOffset = 0;
 
-            // Manually create highlight wrapper
-            const mark = document.createElement('mark');
-            mark.className = 'annotation-highlight';
-            mark.dataset.highlightId = ann.id;
+            for (const tn of textNodes) {
+              const nodeEnd = tn.start + tn.text.length;
 
-            // Apply type-based styling
-            if (ann.type === AnnotationType.DELETION) {
-              mark.classList.add('deletion');
-            } else if (ann.type === AnnotationType.COMMENT) {
-              mark.classList.add('comment');
-            } else if (ann.type === AnnotationType.REPLACEMENT) {
-              mark.classList.add('replacement');
+              if (!startNode && index >= tn.start && index < nodeEnd) {
+                startNode = tn.node;
+                startOffset = index - tn.start;
+              }
+
+              if (endIndex > tn.start && endIndex <= nodeEnd) {
+                endNode = tn.node;
+                endOffset = endIndex - tn.start;
+                break;
+              }
             }
 
-            try {
-              range.surroundContents(mark);
-              found = true;
-            } catch {
-              // surroundContents can fail if range spans multiple elements
-              // In that case, just skip this annotation
-              console.warn('Could not highlight annotation:', ann.id);
-            }
+            console.log('Start node:', startNode, 'offset:', startOffset);
+            console.log('End node:', endNode, 'offset:', endOffset);
 
-            selection?.removeAllRanges();
+            if (startNode && endNode) {
+              try {
+                const range = document.createRange();
+                range.setStart(startNode, startOffset);
+                range.setEnd(endNode, endOffset);
+
+                console.log('Range created, checking fromRange method:', typeof highlighter.fromRange);
+
+                // Check if fromRange exists
+                if (typeof highlighter.fromRange === 'function') {
+                  const tempSource = highlighter.fromRange(range);
+                  console.log('tempSource:', tempSource);
+                  if (tempSource) {
+                    highlighter.remove(tempSource.id);
+                    highlighter.fromStore(tempSource.startMeta, tempSource.endMeta, textToFind, ann.id);
+
+                    if (ann.type === AnnotationType.DELETION) {
+                      highlighter.addClass('deletion', ann.id);
+                    } else if (ann.type === AnnotationType.COMMENT) {
+                      highlighter.addClass('comment', ann.id);
+                    } else if (ann.type === AnnotationType.REPLACEMENT) {
+                      highlighter.addClass('replacement', ann.id);
+                    }
+                    console.log('Highlight created for:', ann.id);
+                  }
+                } else {
+                  // fromRange doesn't exist, try manual mark creation
+                  console.log('fromRange not available, trying manual approach');
+                  const mark = document.createElement('mark');
+                  mark.className = 'annotation-highlight';
+                  mark.dataset.highlightId = ann.id;
+
+                  if (ann.type === AnnotationType.DELETION) {
+                    mark.classList.add('deletion');
+                  } else if (ann.type === AnnotationType.COMMENT) {
+                    mark.classList.add('comment');
+                  } else if (ann.type === AnnotationType.REPLACEMENT) {
+                    mark.classList.add('replacement');
+                  }
+
+                  // For same-node ranges, use surroundContents
+                  if (startNode === endNode) {
+                    range.surroundContents(mark);
+                    console.log('Same-node highlight created');
+                  } else {
+                    // For cross-node, we need to highlight each text node separately
+                    console.log('Cross-node highlight - complex case');
+                  }
+                }
+
+                window.getSelection()?.removeAllRanges();
+              } catch (e) {
+                console.warn('Cross-node highlight failed:', ann.id, e);
+              }
+            }
+          } else {
+            console.warn('Text not found in document:', textToFind);
           }
         }
       } catch (e) {
-        console.warn('Failed to restore annotation:', ann.id, e);
+        console.warn('Failed to restore annotation highlight:', ann.id, e);
       }
     });
 
