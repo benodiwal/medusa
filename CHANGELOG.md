@@ -2,6 +2,26 @@
 
 All notable changes to Medusa will be documented in this file.
 
+## [0.1.1] - 2026-01-04
+
+### Added
+
+- **Plan Sharing** - Share plans with collaborators via URL (no backend required)
+- **Collaborative Annotations** - Multiple reviewers can add annotations to shared plans
+- **Author Attribution** - Each reviewer's annotations are tracked and displayed separately
+- **Re-share with Annotations** - Generate new share URLs that include combined feedback
+- **Share Page** - Web viewer at heymedusa.net/share for viewing shared plans
+
+### Fixed
+
+- Annotation persistence when closing modal quickly
+- Code block rendering on web share page
+- Theme color consistency across web components
+
+### Changed
+
+- Updated documentation with sharing feature guide
+
 ## [0.1.0] - 2026-01-03
 
 ### Added
