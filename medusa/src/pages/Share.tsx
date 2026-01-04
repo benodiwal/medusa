@@ -1,28 +1,18 @@
-'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  ShareablePlan,
-  ShareableAnnotation,
-  Block,
-  Annotation,
-  decompressPlan,
-  generateShareUrl,
-  mergeAnnotations,
-  getRandomColor,
-  AuthorIdentity,
-} from '../../lib/share';
-import { parseMarkdownToBlocks } from '../../lib/parser';
-import { SharedPlanViewer, SharedViewerHandle } from '../../components/share/SharedPlanViewer';
-import { SharedAnnotationSidebar } from '../../components/share/SharedAnnotationSidebar';
-import { AuthorNameDialog } from '../../components/share/AuthorNameDialog';
-import { BiArrowBack, BiShare, BiCheck, BiGroup } from 'react-icons/bi';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Share2, Check, Users } from 'lucide-react';
+import { ShareablePlan, ShareableAnnotation, Block, Annotation } from '../types';
+import { decompressPlan, generateShareUrl, mergeAnnotations } from '../utils/shareCompression';
+import { parseMarkdownToBlocks } from '../utils/parser';
+import { SharedPlanViewer, SharedViewerHandle } from '../components/share/SharedPlanViewer';
+import { SharedAnnotationSidebar } from '../components/share/SharedAnnotationSidebar';
+import { AuthorNameDialog } from '../components/share/AuthorNameDialog';
+import { useAuthor, getRandomColor } from '../contexts/AuthorContext';
 
-const AUTHOR_STORAGE_KEY = 'medusa_author_identity';
-
-export default function SharePage() {
-  const router = useRouter();
+export default function Share() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { identity, setIdentity } = useAuthor();
 
   const [sharedPlan, setSharedPlan] = useState<ShareablePlan | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -32,38 +22,12 @@ export default function SharePage() {
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [pendingAnnotation, setPendingAnnotation] = useState<Annotation | null>(null);
-  const [identity, setIdentityState] = useState<AuthorIdentity | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   const viewerRef = useRef<SharedViewerHandle>(null);
 
-  // Load identity from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(AUTHOR_STORAGE_KEY);
-      if (stored) {
-        setIdentityState(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error('Failed to load author identity:', e);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  const setIdentity = (newIdentity: AuthorIdentity | null) => {
-    setIdentityState(newIdentity);
-    if (newIdentity) {
-      localStorage.setItem(AUTHOR_STORAGE_KEY, JSON.stringify(newIdentity));
-    } else {
-      localStorage.removeItem(AUTHOR_STORAGE_KEY);
-    }
-  };
-
   // Decode plan from URL hash on mount
   useEffect(() => {
-    if (!isLoaded) return;
-
-    const hash = window.location.hash.slice(1);
+    const hash = location.hash.slice(1); // Remove the '#'
     if (!hash) {
       setError('No plan data found in URL');
       return;
@@ -77,8 +41,9 @@ export default function SharePage() {
 
     setSharedPlan(plan);
     setBlocks(parseMarkdownToBlocks(plan.content));
-  }, [isLoaded]);
+  }, [location.hash]);
 
+  // Handle adding annotation - prompt for name if needed
   const handleAddAnnotation = useCallback((ann: Annotation) => {
     if (!identity) {
       setPendingAnnotation(ann);
@@ -98,6 +63,7 @@ export default function SharePage() {
     setIdentity(newIdentity);
     setShowNameDialog(false);
 
+    // If there was a pending annotation, add it now
     if (pendingAnnotation) {
       const annotationWithAuthor: Annotation = {
         ...pendingAnnotation,
@@ -116,6 +82,7 @@ export default function SharePage() {
       return;
     }
 
+    // Merge existing annotations with new local ones
     const mergedAnnotations = mergeAnnotations(
       sharedPlan.annotations,
       localAnnotations,
@@ -142,6 +109,7 @@ export default function SharePage() {
     viewerRef.current?.removeHighlight(id);
   };
 
+  // Combine shared annotations with local ones for display
   const allAnnotations: ShareableAnnotation[] = [
     ...(sharedPlan?.annotations || []),
     ...localAnnotations.map(ann => ({
@@ -151,33 +119,23 @@ export default function SharePage() {
     } as ShareableAnnotation)),
   ];
 
+  // IDs of annotations that are read-only (from the shared plan)
   const readOnlyIds = sharedPlan?.annotations.map(a => a.id) || [];
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#6B5B47] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-[#6B5B47]">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1e8] flex items-center justify-center">
-            <svg className="w-8 h-8 text-[#6B5B47]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+            <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-[#16110a] mb-2">Unable to Load Plan</h2>
-          <p className="text-sm text-[#6B5B47] mb-6">{error}</p>
+          <h2 className="text-lg font-semibold text-foreground mb-2">Unable to Load Plan</h2>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 bg-[#6B5B47] text-white rounded-lg hover:opacity-90 transition-opacity"
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
           >
             Go Home
           </button>
@@ -188,79 +146,83 @@ export default function SharePage() {
 
   if (!sharedPlan) {
     return (
-      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#6B5B47] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-[#6B5B47]">Loading shared plan...</p>
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading shared plan...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#faf9f7] flex">
+    <div className="fixed inset-0 z-50 bg-background flex">
       {/* Main content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-[#faf9f7] border-b border-[#e5e2db] px-6 py-3">
+        <header className="sticky top-0 z-40 bg-background border-b border-border px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/')}
-                className="p-2 text-[#6B5B47] hover:text-[#16110a] hover:bg-[#f3f1e8] rounded-lg transition-colors"
+                onClick={() => navigate('/')}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 title="Back to home"
               >
-                <BiArrowBack className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-2">
                 <img src="/medusa-logo.png" alt="Medusa" className="w-7 h-7 object-contain" />
-                <h1 className="text-base font-semibold text-[#16110a]">{sharedPlan.title}</h1>
+                <h1 className="text-base font-semibold text-foreground">{sharedPlan.title}</h1>
               </div>
 
+              {/* Shared by indicator */}
               {sharedPlan.sharedBy && (
-                <span className="px-2 py-0.5 text-xs text-[#6B5B47] bg-[#f3f1e8] rounded flex items-center gap-1">
-                  <BiGroup className="w-3 h-3" />
+                <span className="px-2 py-0.5 text-xs text-muted-foreground bg-muted rounded flex items-center gap-1">
+                  <Users className="w-3 h-3" />
                   Shared by {sharedPlan.sharedBy}
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Your identity */}
               {identity ? (
                 <button
                   onClick={() => setShowNameDialog(true)}
-                  className="px-2 py-0.5 text-xs rounded flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer bg-[#f3f1e8] text-[#6B5B47] hover:text-[#16110a]"
+                  className="px-2 py-0.5 text-xs rounded flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+                  style={{ backgroundColor: `${identity.color}20`, color: identity.color }}
                   title="Click to change your name"
                 >
-                  <span className="w-2 h-2 rounded-full bg-[#6B5B47]" />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: identity.color }} />
                   {identity.name}
                 </button>
               ) : (
                 <button
                   onClick={() => setShowNameDialog(true)}
-                  className="px-2 py-1 text-xs text-[#6B5B47] hover:text-[#16110a] transition-colors"
+                  className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Set your name
                 </button>
               )}
 
+              {/* Share button */}
               <button
                 onClick={handleGenerateShareUrl}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   copied
-                    ? 'bg-green-500/10 text-green-600'
-                    : 'bg-[#6B5B47] text-white hover:opacity-90'
+                    ? 'bg-green-500/10 text-green-500'
+                    : 'bg-primary text-primary-foreground hover:opacity-90'
                 }`}
               >
                 {copied ? (
                   <>
-                    <BiCheck className="w-4 h-4" />
+                    <Check className="w-4 h-4" />
                     Link Copied!
                   </>
                 ) : (
                   <>
-                    <BiShare className="w-4 h-4" />
+                    <Share2 className="w-4 h-4" />
                     {localAnnotations.length > 0 ? 'Share with Your Annotations' : 'Copy Share Link'}
                   </>
                 )}
@@ -286,7 +248,7 @@ export default function SharePage() {
         </main>
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar with author attribution */}
       <SharedAnnotationSidebar
         annotations={allAnnotations}
         blocks={blocks}

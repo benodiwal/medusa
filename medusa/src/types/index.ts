@@ -95,3 +95,24 @@ export interface ObsidianVault {
   path: string;
 }
 
+// Shareable plan types for URL-based sharing
+export interface ShareablePlan {
+  title: string;
+  content: string;
+  createdAt: number;
+  sharedBy?: string;
+  sharedAt?: number;
+  annotations: ShareableAnnotation[];
+  version: number;
+}
+
+export interface ShareableAnnotation extends Annotation {
+  authorName: string;
+  authorColor?: string;
+}
+
+export interface AuthorIdentity {
+  name: string;
+  color: string;
+}
+

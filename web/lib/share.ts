@@ -1,110 +1,164 @@
-export interface SharedAnnotation {
-  type: string
-  originalText: string
-  text?: string
+import LZString from 'lz-string';
+
+export enum AnnotationType {
+  DELETION = 'DELETION',
+  INSERTION = 'INSERTION',
+  REPLACEMENT = 'REPLACEMENT',
+  COMMENT = 'COMMENT',
+  GLOBAL_COMMENT = 'GLOBAL_COMMENT',
 }
 
-export interface SharedPlan {
-  content: string
-  annotations: SharedAnnotation[]
-  project?: string
-  createdAt?: number
+export interface Annotation {
+  id: string;
+  blockId: string;
+  startOffset: number;
+  endOffset: number;
+  type: AnnotationType;
+  text?: string;
+  originalText: string;
+  createdAt: number;
+  author?: string;
+  startMeta?: {
+    parentTagName: string;
+    parentIndex: number;
+    textOffset: number;
+  };
+  endMeta?: {
+    parentTagName: string;
+    parentIndex: number;
+    textOffset: number;
+  };
 }
 
-// Compress data using browser's CompressionStream API
-export async function compressData(plan: SharedPlan): Promise<string> {
-  const json = JSON.stringify(plan)
-  const encoder = new TextEncoder()
-  const data = encoder.encode(json)
-
-  // Use CompressionStream if available, otherwise fall back to raw base64
-  if (typeof CompressionStream !== 'undefined') {
-    const cs = new CompressionStream('deflate')
-    const writer = cs.writable.getWriter()
-    writer.write(data)
-    writer.close()
-
-    const compressedChunks: Uint8Array[] = []
-    const reader = cs.readable.getReader()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      compressedChunks.push(value)
-    }
-
-    const compressed = new Uint8Array(
-      compressedChunks.reduce((acc, chunk) => acc + chunk.length, 0)
-    )
-    let offset = 0
-    for (const chunk of compressedChunks) {
-      compressed.set(chunk, offset)
-      offset += chunk.length
-    }
-
-    return btoa(String.fromCharCode(...compressed))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '')
-  }
-
-  // Fallback: just base64 encode
-  return btoa(json)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
+export interface ShareableAnnotation extends Annotation {
+  authorName: string;
+  authorColor?: string;
 }
 
-// Decompress data from URL hash
-export async function decompressData(encoded: string): Promise<SharedPlan> {
-  // Restore base64 padding and characters
-  let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
-  while (base64.length % 4) {
-    base64 += '='
+export interface ShareablePlan {
+  title: string;
+  content: string;
+  createdAt: number;
+  sharedBy?: string;
+  sharedAt?: number;
+  annotations: ShareableAnnotation[];
+  version: number;
+}
+
+export interface AuthorIdentity {
+  name: string;
+  color: string;
+}
+
+export interface Block {
+  id: string;
+  type: 'paragraph' | 'heading' | 'blockquote' | 'list-item' | 'code' | 'hr' | 'table';
+  content: string;
+  level?: number;
+  language?: string;
+  checked?: boolean;
+  order: number;
+  startLine: number;
+}
+
+/**
+ * Compress ShareablePlan to URL-safe string using lz-string
+ */
+export function compressPlan(plan: ShareablePlan): string {
+  const json = JSON.stringify(plan);
+  return LZString.compressToEncodedURIComponent(json);
+}
+
+/**
+ * Decompress URL hash back to ShareablePlan using lz-string
+ */
+export function decompressPlan(compressed: string): ShareablePlan | null {
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(compressed);
+    if (!json) return null;
+    return JSON.parse(json) as ShareablePlan;
+  } catch {
+    return null;
   }
+}
 
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
+/**
+ * Generate a share URL from a ShareablePlan
+ */
+export function generateShareUrl(plan: ShareablePlan): string {
+  const compressed = compressPlan(plan);
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://heymedusa.net';
+  return `${baseUrl}/share#${compressed}`;
+}
 
-  // Try to decompress, fall back to raw JSON
-  if (typeof DecompressionStream !== 'undefined') {
-    try {
-      const ds = new DecompressionStream('deflate')
-      const writer = ds.writable.getWriter()
-      writer.write(bytes)
-      writer.close()
+/**
+ * Create a ShareablePlan from content and annotations
+ */
+export function createShareablePlan(
+  content: string,
+  title: string,
+  annotations: Annotation[],
+  sharedBy?: string,
+  authorColor?: string
+): ShareablePlan {
+  return {
+    title,
+    content,
+    createdAt: Date.now(),
+    sharedBy,
+    sharedAt: Date.now(),
+    annotations: annotations.map(ann => ({
+      ...ann,
+      authorName: ann.author || sharedBy || 'Anonymous',
+      authorColor: authorColor,
+    })) as ShareableAnnotation[],
+    version: 1,
+  };
+}
 
-      const decompressedChunks: Uint8Array[] = []
-      const reader = ds.readable.getReader()
+/**
+ * Merge new annotations with existing ones from a shared plan
+ */
+export function mergeAnnotations(
+  existing: ShareableAnnotation[],
+  newAnnotations: Annotation[],
+  authorName: string,
+  authorColor: string
+): ShareableAnnotation[] {
+  const merged = [...existing];
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        decompressedChunks.push(value)
-      }
-
-      const decompressed = new Uint8Array(
-        decompressedChunks.reduce((acc, chunk) => acc + chunk.length, 0)
-      )
-      let offset = 0
-      for (const chunk of decompressedChunks) {
-        decompressed.set(chunk, offset)
-        offset += chunk.length
-      }
-
-      const decoder = new TextDecoder()
-      const json = decoder.decode(decompressed)
-      return JSON.parse(json)
-    } catch {
-      // Fall through to try raw JSON
+  for (const ann of newAnnotations) {
+    if (!merged.find(e => e.id === ann.id)) {
+      merged.push({
+        ...ann,
+        author: authorName,
+        authorName,
+        authorColor,
+      });
     }
   }
 
-  // Fallback: try to parse as raw JSON
-  const decoder = new TextDecoder()
-  const json = decoder.decode(bytes)
-  return JSON.parse(json)
+  return merged;
+}
+
+/**
+ * Check if URL length is within safe limits
+ */
+export function isUrlLengthSafe(plan: ShareablePlan): boolean {
+  const compressed = compressPlan(plan);
+  return compressed.length < 6000;
+}
+
+/**
+ * Get random author color
+ */
+export function getRandomColor(): string {
+  const colors = [
+    '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+    '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }

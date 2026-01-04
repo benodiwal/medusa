@@ -3,7 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { X, BookMarked, Check, GitCompare, FileText } from 'lucide-react';
 import { PlanItem, Block, Annotation, ObsidianVault } from '../../types';
 import { PlanViewer, ViewerHandle, AnnotationSidebar, DecisionBar, DiffViewer } from '../plan';
+import { ShareButton, AuthorNameDialog } from '../share';
 import { parseMarkdownToBlocks, exportFeedback } from '../../utils/parser';
+import { useAuthor, getRandomColor } from '../../contexts/AuthorContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +26,20 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
   const [obsidianVaults, setObsidianVaults] = useState<ObsidianVault[]>([]);
   const [savedToObsidian, setSavedToObsidian] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
   const viewerRef = useRef<ViewerHandle>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const { identity, setIdentity } = useAuthor();
+
   const hasPreviousContent = !!plan.previous_content;
+
+  // Show name dialog on first open if no identity set
+  useEffect(() => {
+    if (!identity) {
+      setShowNameDialog(true);
+    }
+  }, []);
 
   useEffect(() => {
     setBlocks(parseMarkdownToBlocks(plan.content));
@@ -206,6 +218,12 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
     return exportFeedback(blocks, annotations);
   }, [blocks, annotations]);
 
+  const handleSetAuthorName = (name: string) => {
+    const newIdentity = { name, color: identity?.color || getRandomColor() };
+    setIdentity(newIdentity);
+    setShowNameDialog(false);
+  };
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -257,6 +275,21 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
                   </span>
                   Claude Code
                 </span>
+              )}
+
+              {/* Author identity badge */}
+              {identity && (
+                <>
+                  <div className="h-5 w-px bg-border" />
+                  <button
+                    onClick={() => setShowNameDialog(true)}
+                    className="px-2 py-0.5 text-xs rounded flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer bg-muted text-muted-foreground hover:text-foreground"
+                    title="Click to change your name"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    {identity.name}
+                  </button>
+                </>
               )}
             </div>
 
@@ -319,6 +352,13 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
                 </DropdownMenu>
               )}
 
+              {/* Share Button */}
+              <ShareButton
+                content={plan.content}
+                title={plan.project_name}
+                annotations={annotations}
+              />
+
               <button
                 onClick={onClose}
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
@@ -371,6 +411,14 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
         onDeny={handleDeny}
         annotationCount={annotations.length}
         getFeedback={getFeedback}
+      />
+
+      {/* Author name dialog */}
+      <AuthorNameDialog
+        open={showNameDialog}
+        onClose={() => setShowNameDialog(false)}
+        onSubmit={handleSetAuthorName}
+        currentName={identity?.name}
       />
     </div>
   );
