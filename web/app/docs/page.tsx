@@ -100,13 +100,27 @@ export default function Docs() {
                 <DownloadButton />
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl border border-black/5" style={{backgroundColor: '#F3F1E8'}}>
+              <div className="p-4 sm:p-6 rounded-xl border border-black/5 mb-6" style={{backgroundColor: '#F3F1E8'}}>
                 <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>System Requirements</h4>
                 <ul className="space-y-1 text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
                   <li>• macOS 11+ (Apple Silicon & Intel)</li>
                   <li>• Windows and Linux coming soon</li>
                   <li>• Claude Code CLI installed and configured</li>
                 </ul>
+              </div>
+
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
+                <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>macOS: Allow app to run</h4>
+                <p className="text-sm sm:text-base mb-3" style={{color: '#6B5B47', opacity: 0.8}}>
+                  Medusa is not code-signed yet. After installing, macOS may show a &quot;damaged&quot; or &quot;unidentified developer&quot; warning.
+                  To fix this, run the following command in Terminal:
+                </p>
+                <div className="p-3 rounded-lg font-mono text-sm overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
+                  xattr -cr /Applications/medusa.app
+                </div>
+                <p className="text-sm mt-3" style={{color: '#6B5B47', opacity: 0.7}}>
+                  Alternatively, right-click the app and select &quot;Open&quot; to bypass the warning.
+                </p>
               </div>
             </div>
           </section>

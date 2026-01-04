@@ -21,6 +21,24 @@ Claude Code waits for your decision before proceeding.
 
 ## Installation
 
+### Download (Recommended)
+
+Download the latest `.dmg` from [Releases](https://github.com/benodiwal/medusa/releases).
+
+**macOS users:** The app is not code-signed yet. After installing, you'll need to allow it to run:
+
+1. Open the `.dmg` and drag Medusa to Applications
+2. **Right-click** (or Control-click) on Medusa.app and select **Open**
+3. Click **Open** in the dialog that appears
+4. You only need to do this once
+
+If that doesn't work, run this in Terminal:
+```bash
+xattr -cr /Applications/medusa.app
+```
+
+### Build from Source
+
 ```bash
 cd medusa
 npm install
