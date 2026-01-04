@@ -8,11 +8,11 @@ import DownloadButton from '../../components/DownloadButton'
 export default function Pricing() {
   const [annual, setAnnual] = useState(true)
 
-  const proPrice = annual ? 7499 : 749
+  const proPrice = annual ? 89 : 9
   const proLabel = annual ? '/year' : '/month'
 
-  const teamPrice = annual ? 20000 : 2000
-  const teamLabel = annual ? '/year' : '/month per user'
+  const teamPrice = annual ? 250 : 25
+  const teamLabel = annual ? '/year per user' : '/month per user'
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FBFBF4' }}>
@@ -145,11 +145,11 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#6B5B47' }}>₹{proPrice.toLocaleString('en-IN')}</span>
+                <span className="text-4xl font-bold" style={{ color: '#6B5B47' }}>${proPrice}</span>
                 <span className="text-sm" style={{ color: '#6B5B47', opacity: 0.6 }}>{proLabel}</span>
                 {annual && (
                   <span className="ml-2 text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#22C55E20', color: '#16A34A' }}>
-                    Save ₹1,489
+                    Save $19
                   </span>
                 )}
               </div>
@@ -196,7 +196,7 @@ export default function Pricing() {
               </div>
 
               <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#6B5B47' }}>₹{teamPrice.toLocaleString('en-IN')}</span>
+                <span className="text-4xl font-bold" style={{ color: '#6B5B47' }}>${teamPrice}</span>
                 <span className="text-sm" style={{ color: '#6B5B47', opacity: 0.6 }}>{teamLabel}</span>
               </div>
 

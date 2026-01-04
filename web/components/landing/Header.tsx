@@ -29,6 +29,13 @@ const Header = () => {
                 Docs
               </a>
               <a
+                href="/pricing"
+                className="text-sm font-medium hover:underline hidden sm:block"
+                style={{color: '#6B5B47'}}
+              >
+                Pricing
+              </a>
+              <a
                 href="https://screen.studio/share/VWB7nmog"
                 target="_blank"
                 rel="noopener noreferrer"
