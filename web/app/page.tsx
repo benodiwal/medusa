@@ -2,6 +2,7 @@ import Header from "../components/landing/Header";
 import Ascii from "../components/landing/Ascii";
 import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
+import ShareFeature from "../components/landing/ShareFeature";
 import Image from "next/image";
 import DownloadButton from "../components/DownloadButton";
 
@@ -68,6 +69,8 @@ export default function Home() {
       </main>
 
       <WhyMedusa />
+
+      <ShareFeature />
 
       <Footer />
     </div>
