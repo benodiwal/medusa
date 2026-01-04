@@ -149,7 +149,7 @@ export default function Pricing() {
                 <span className="text-sm" style={{ color: '#6B5B47', opacity: 0.6 }}>{proLabel}</span>
                 {annual && (
                   <span className="ml-2 text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#22C55E20', color: '#16A34A' }}>
-                    Save $19
+                    Save 17%
                   </span>
                 )}
               </div>
