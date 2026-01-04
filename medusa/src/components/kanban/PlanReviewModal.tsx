@@ -52,7 +52,11 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
     }
   }, [plan.id, plan.annotations]);
 
-  // Save annotations to backend (debounced)
+  // Keep a ref to latest annotations for cleanup
+  const annotationsRef = useRef<Annotation[]>(annotations);
+  annotationsRef.current = annotations;
+
+  // Save annotations to backend
   const saveAnnotationsToBackend = useCallback(async (anns: Annotation[]) => {
     try {
       await invoke('save_annotations', { id: plan.id, annotations: anns });
@@ -76,6 +80,13 @@ export function PlanReviewModal({ plan, onClose, onComplete }: PlanReviewModalPr
       }
     };
   }, [annotations, saveAnnotationsToBackend]);
+
+  // Save immediately when modal unmounts to prevent data loss
+  useEffect(() => {
+    return () => {
+      invoke('save_annotations', { id: plan.id, annotations: annotationsRef.current });
+    };
+  }, [plan.id]);
 
   // Load Obsidian vaults
   useEffect(() => {
