@@ -10,6 +10,7 @@ interface SharedSidebarProps {
   selectedId: string | null;
   currentAuthor?: string;
   onDeleteLocal: (id: string) => void;
+  isMobile?: boolean;
 }
 
 export function SharedAnnotationSidebar({
@@ -19,6 +20,7 @@ export function SharedAnnotationSidebar({
   selectedId,
   currentAuthor,
   onDeleteLocal,
+  isMobile = false,
 }: SharedSidebarProps) {
   // Sort annotations by block position
   const sortedAnnotations = [...annotations].sort((a, b) => {
@@ -62,6 +64,91 @@ export function SharedAnnotationSidebar({
     return ann.authorName === currentAuthor;
   };
 
+  // Mobile layout - no outer wrapper, just content
+  if (isMobile) {
+    if (annotations.length === 0) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <p className="text-sm text-[#6B5B47] text-center">
+            No annotations yet.<br />
+            Select text to add feedback.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-3 space-y-4">
+        {Object.entries(byAuthor).map(([author, anns]) => (
+          <div key={author}>
+            {/* Author header */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full shrink-0 bg-[#6B5B47]" />
+              <span className="text-xs font-medium text-[#6B5B47] truncate">
+                {author}
+                {author === currentAuthor && ' (you)'}
+              </span>
+              <span className="text-xs text-[#9a8b7a]">
+                ({anns.length})
+              </span>
+            </div>
+
+            {/* Author's annotations */}
+            <div className="space-y-2 ml-4">
+              {anns.map((ann) => (
+                <div
+                  key={ann.id}
+                  onClick={() => onSelect(ann.id)}
+                  className={`
+                    group relative p-3 rounded-lg border border-l-[3px] border-l-[#6B5B47] cursor-pointer transition-colors active:bg-[#f3f1e8]
+                    ${selectedId === ann.id
+                      ? 'bg-[#f3f1e8] border-[#6B5B47]'
+                      : 'bg-white border-[#e5e2db]'
+                    }
+                  `}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`text-[10px] font-medium uppercase tracking-wide ${getTypeColor(ann.type)}`}>
+                      {getTypeLabel(ann.type)}
+                    </span>
+                    {canDelete(ann) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteLocal(ann.id);
+                        }}
+                        className="text-[#6B5B47] hover:text-red-600 p-1"
+                        title="Remove annotation"
+                      >
+                        <BiX className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {ann.originalText && ann.type !== AnnotationType.GLOBAL_COMMENT && (
+                    <div className="text-xs text-[#6B5B47] bg-[#f3f1e8] p-2 rounded mb-2 font-mono line-clamp-2">
+                      &ldquo;{ann.originalText}&rdquo;
+                    </div>
+                  )}
+
+                  {ann.text && ann.type !== AnnotationType.DELETION && (
+                    <div className="text-sm text-[#16110a] line-clamp-3">
+                      {ann.type === AnnotationType.REPLACEMENT && (
+                        <span className="text-[#6B5B47] mr-1">&rarr;</span>
+                      )}
+                      {ann.text}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Desktop layout
   if (annotations.length === 0) {
     return (
       <div className="w-80 border-l border-[#e5e2db] bg-white h-full flex flex-col">

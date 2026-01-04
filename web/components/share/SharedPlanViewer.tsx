@@ -350,12 +350,12 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
     <div className="relative z-50 w-full max-w-3xl">
       <article
         ref={containerRef}
-        className="w-full max-w-3xl bg-white border border-[#e5e2db] rounded-xl shadow-lg p-5 md:p-10 lg:p-14 relative"
+        className="w-full max-w-3xl bg-white border border-[#e5e2db] rounded-xl shadow-lg p-4 sm:p-6 md:p-10 lg:p-14 relative"
       >
-        <div className="absolute top-3 right-3 md:top-5 md:right-5">
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-5 md:right-5">
           <button
             onClick={handleCopyPlan}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[#6B5B47] hover:text-[#16110a] bg-[#f3f1e8] hover:bg-[#e5e2db] rounded-md transition-colors"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-medium text-[#6B5B47] hover:text-[#16110a] bg-[#f3f1e8] hover:bg-[#e5e2db] rounded-md transition-colors"
             title={copied ? 'Copied!' : 'Copy plan'}
           >
             {copied ? (
@@ -363,14 +363,14 @@ export const SharedPlanViewer = forwardRef<SharedViewerHandle, SharedViewerProps
                 <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Copied!</span>
+                <span className="hidden sm:inline">Copied!</span>
               </>
             ) : (
               <>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <span>Copy</span>
+                <span className="hidden sm:inline">Copy</span>
               </>
             )}
           </button>
@@ -406,9 +406,9 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
     case 'heading': {
       const level = block.level || 1;
       const styles: Record<number, string> = {
-        1: 'text-2xl font-bold mb-4 mt-6 first:mt-0 tracking-tight text-[#16110a]',
-        2: 'text-xl font-semibold mb-3 mt-8 text-[#16110a]',
-        3: 'text-base font-semibold mb-2 mt-6 text-[#16110a]',
+        1: 'text-xl sm:text-2xl font-bold mb-3 sm:mb-4 mt-4 sm:mt-6 first:mt-0 tracking-tight text-[#16110a]',
+        2: 'text-lg sm:text-xl font-semibold mb-2 sm:mb-3 mt-6 sm:mt-8 text-[#16110a]',
+        3: 'text-base font-semibold mb-2 mt-4 sm:mt-6 text-[#16110a]',
       };
       const className = styles[level] || 'text-base font-semibold mb-2 mt-4 text-[#16110a]';
       return React.createElement(
@@ -421,7 +421,7 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
     case 'blockquote':
       return (
         <blockquote
-          className="border-l-2 border-[#6B5B47]/50 pl-4 my-4 text-[#6B5B47] italic"
+          className="border-l-2 border-[#6B5B47]/50 pl-3 sm:pl-4 my-3 sm:my-4 text-[#6B5B47] italic text-sm sm:text-base"
           data-block-id={block.id}
         >
           <InlineMarkdown text={block.content} />
@@ -429,11 +429,11 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
       );
 
     case 'list-item': {
-      const indent = (block.level || 0) * 1.25;
+      const indent = (block.level || 0) * 1;
       const isCheckbox = block.checked !== undefined;
       return (
         <div
-          className="flex gap-3 my-1.5"
+          className="flex gap-2 sm:gap-3 my-1 sm:my-1.5"
           data-block-id={block.id}
           style={{ marginLeft: `${indent}rem` }}
         >
@@ -465,11 +465,11 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
       return <CodeBlock block={block} />;
 
     case 'hr':
-      return <hr className="border-[#e5e2db] my-8" data-block-id={block.id} />;
+      return <hr className="border-[#e5e2db] my-6 sm:my-8" data-block-id={block.id} />;
 
     default:
       return (
-        <p className="mb-4 leading-relaxed text-[#16110a]/90 text-[15px]" data-block-id={block.id}>
+        <p className="mb-3 sm:mb-4 leading-relaxed text-[#16110a]/90 text-sm sm:text-[15px]" data-block-id={block.id}>
           <InlineMarkdown text={block.content} />
         </p>
       );
@@ -561,10 +561,10 @@ const CodeBlock: React.FC<{ block: Block }> = ({ block }) => {
   };
 
   return (
-    <div className="relative group my-5" data-block-id={block.id}>
+    <div className="relative group my-4 sm:my-5" data-block-id={block.id}>
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 p-1.5 rounded-md bg-[#f3f1e8]/80 hover:bg-[#e5e2db] text-[#6B5B47] hover:text-[#16110a] opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className="absolute top-2 right-2 p-1.5 rounded-md bg-[#f3f1e8]/80 hover:bg-[#e5e2db] text-[#6B5B47] hover:text-[#16110a] sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10"
       >
         {copied ? (
           <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -576,7 +576,7 @@ const CodeBlock: React.FC<{ block: Block }> = ({ block }) => {
           </svg>
         )}
       </button>
-      <pre className="rounded-lg text-[13px] overflow-hidden border border-[#e5e2db]">
+      <pre className="rounded-lg text-[11px] sm:text-[13px] overflow-x-auto border border-[#e5e2db]">
         <code ref={codeRef} className={`hljs font-mono${block.language ? ` language-${block.language}` : ''}`}>
           {block.content}
         </code>
