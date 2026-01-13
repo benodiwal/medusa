@@ -9,19 +9,32 @@ import { isPermissionGranted, requestPermission, sendNotification } from '@tauri
 
 const HOOK_CONFIG = `{
   "hooks": {
-    "ExitPlanMode": [{
-      "type": "command",
-      "command": "medusa-hook"
-    }]
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/medusa-plan-review.sh",
+            "timeout": 86400
+          }
+        ]
+      }
+    ]
   }
 }`;
+
+const HOOK_SCRIPT = `#!/bin/bash
+/Applications/medusa.app/Contents/MacOS/medusa-cli "$@"`;
+
+const MACOS_FIX = `xattr -cr /Applications/medusa.app`;
 
 export default function KanbanBoard() {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<PlanItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const previousPlanIdsRef = useRef<Set<string>>(new Set());
   const notificationPermissionRef = useRef<boolean>(false);
@@ -148,11 +161,11 @@ export default function KanbanBoard() {
   const workingPlans = filteredPlans.filter(p => p.status === PlanStatus.ChangesRequested);
   const approvedPlans = filteredPlans.filter(p => p.status === PlanStatus.Approved);
 
-  const handleCopyConfig = async () => {
+  const handleCopy = async (id: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(HOOK_CONFIG);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (e) {
       console.error('Failed to copy:', e);
     }
@@ -258,11 +271,73 @@ export default function KanbanBoard() {
               <div className="bg-card border border-border rounded-lg p-6 space-y-5">
                 <h3 className="font-medium text-foreground">Get Started</h3>
 
-                {/* Step 1 */}
+                {/* Step 1 - macOS Fix */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
                       1
+                    </span>
+                    <span className="font-medium text-sm text-foreground">Fix macOS Permissions</span>
+                    <span className="text-xs text-muted-foreground">(macOS only)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Run this command in Terminal to clear quarantine attributes:
+                  </p>
+                  <div className="ml-8 relative">
+                    <pre className="bg-muted p-3 pr-10 rounded-lg text-xs text-foreground overflow-x-auto font-mono">
+                      {MACOS_FIX}
+                    </pre>
+                    <button
+                      onClick={() => handleCopy('macos', MACOS_FIX)}
+                      className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-background/50 rounded transition-colors"
+                      title={copiedId === 'macos' ? 'Copied!' : 'Copy'}
+                    >
+                      {copiedId === 'macos' ? (
+                        <Check className="w-3.5 h-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Step 2 - Create Hook Script */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
+                      2
+                    </span>
+                    <span className="font-medium text-sm text-foreground">Create Hook Script</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Create ~/.claude/hooks/medusa-plan-review.sh with:
+                  </p>
+                  <div className="ml-8 relative">
+                    <pre className="bg-muted p-3 pr-10 rounded-lg text-xs text-foreground overflow-x-auto font-mono">
+                      {HOOK_SCRIPT}
+                    </pre>
+                    <button
+                      onClick={() => handleCopy('script', HOOK_SCRIPT)}
+                      className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-background/50 rounded transition-colors"
+                      title={copiedId === 'script' ? 'Copied!' : 'Copy'}
+                    >
+                      {copiedId === 'script' ? (
+                        <Check className="w-3.5 h-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Then make it executable: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">chmod +x ~/.claude/hooks/medusa-plan-review.sh</code>
+                  </p>
+                </div>
+
+                {/* Step 3 - Configure Hook */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
+                      3
                     </span>
                     <span className="font-medium text-sm text-foreground">Configure Claude Code Hook</span>
                   </div>
@@ -274,11 +349,11 @@ export default function KanbanBoard() {
                       {HOOK_CONFIG}
                     </pre>
                     <button
-                      onClick={handleCopyConfig}
+                      onClick={() => handleCopy('config', HOOK_CONFIG)}
                       className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-background/50 rounded transition-colors"
-                      title={copied ? 'Copied!' : 'Copy'}
+                      title={copiedId === 'config' ? 'Copied!' : 'Copy'}
                     >
-                      {copied ? (
+                      {copiedId === 'config' ? (
                         <Check className="w-3.5 h-3.5 text-green-500" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
@@ -287,29 +362,16 @@ export default function KanbanBoard() {
                   </div>
                 </div>
 
-                {/* Step 2 */}
+                {/* Step 4 - Use It */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                      2
+                      4
                     </span>
                     <span className="font-medium text-sm text-foreground">Use Plan Mode in Claude Code</span>
                   </div>
                   <p className="text-xs text-muted-foreground ml-8">
-                    When Claude enters plan mode, plans will appear here automatically for your review.
-                  </p>
-                </div>
-
-                {/* Step 3 */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                      3
-                    </span>
-                    <span className="font-medium text-sm text-foreground">Review & Approve</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground ml-8">
-                    Add annotations, request changes, or approve plans before Claude implements them.
+                    When Claude enters plan mode, plans will appear here for your review. Add annotations, request changes, or approve before Claude implements.
                   </p>
                 </div>
               </div>
@@ -317,7 +379,7 @@ export default function KanbanBoard() {
               {/* Documentation Link */}
               <div className="text-center">
                 <a
-                  href="https://github.com/benodiwal/medusa#readme"
+                  href="https://heymedusa.net/docs"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
