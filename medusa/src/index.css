@@ -177,6 +177,11 @@ All colors MUST be HSL.
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+
+  /* Font customization variables (controlled by FontContext) */
+  --font-size-base: 16px;
+  --font-family-body: 'GT Sectra', Georgia, 'Times New Roman', serif;
+  --zoom-level: 1;
 }
 
 /* Dark theme colors */
@@ -222,7 +227,9 @@ All colors MUST be HSL.
 body {
   background-color: theme(--color-background);
   color: theme(--color-foreground);
-  font-family: 'GT Sectra', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-base);
+  zoom: var(--zoom-level);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

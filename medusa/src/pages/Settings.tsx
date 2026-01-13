@@ -5,11 +5,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor } from "lucide-react";
+import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor, Type, RotateCcw } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useFontSettings } from "@/contexts/FontContext";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
+  const { settings, setFontSize, setFontFamily, setZoomLevel, resetToDefaults } = useFontSettings();
   const navigate = useNavigate();
 
   const themeOptions = [
@@ -18,7 +20,15 @@ const Settings = () => {
     { value: "dark", label: "Dark", icon: Moon }
   ] as const;
 
+  const fontFamilyOptions = [
+    { value: "default", label: "Default (GT Sectra)" },
+    { value: "system", label: "System" },
+    { value: "sans-serif", label: "Sans-serif (Inter)" },
+    { value: "monospace", label: "Monospace (JetBrains)" },
+  ] as const;
+
   const currentTheme = themeOptions.find(option => option.value === theme) || themeOptions[0];
+  const currentFontFamily = fontFamilyOptions.find(option => option.value === settings.fontFamily) || fontFamilyOptions[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,7 +65,8 @@ const Settings = () => {
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+              {/* Theme */}
               <div className="flex items-center justify-between">
                 <div>
                   <label className="text-sm font-medium text-foreground">Theme</label>
@@ -87,6 +98,132 @@ const Settings = () => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+
+              {/* Font Size */}
+              <div className="pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Font Size</label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Adjust the base text size
+                    </p>
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {settings.fontSize}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={12}
+                  max={24}
+                  step={1}
+                  value={settings.fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer
+                    [&::-webkit-slider-thumb]:appearance-none
+                    [&::-webkit-slider-thumb]:w-4
+                    [&::-webkit-slider-thumb]:h-4
+                    [&::-webkit-slider-thumb]:rounded-full
+                    [&::-webkit-slider-thumb]:bg-primary
+                    [&::-webkit-slider-thumb]:cursor-pointer
+                    [&::-moz-range-thumb]:w-4
+                    [&::-moz-range-thumb]:h-4
+                    [&::-moz-range-thumb]:rounded-full
+                    [&::-moz-range-thumb]:bg-primary
+                    [&::-moz-range-thumb]:border-0
+                    [&::-moz-range-thumb]:cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>12px</span>
+                  <span>24px</span>
+                </div>
+              </div>
+
+              {/* Font Family */}
+              <div className="pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Font Family</label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Choose your preferred typeface
+                    </p>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center gap-2 px-3 py-2 text-sm text-foreground bg-muted rounded-md hover:bg-muted/80 transition-colors">
+                        <Type className="w-4 h-4" />
+                        <span>{currentFontFamily.label}</span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-card border-border">
+                      {fontFamilyOptions.map((fontOption) => (
+                        <DropdownMenuItem
+                          key={fontOption.value}
+                          onClick={() => setFontFamily(fontOption.value)}
+                          className="cursor-pointer text-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
+                        >
+                          <span className="flex-1">{fontOption.label}</span>
+                          {settings.fontFamily === fontOption.value && (
+                            <Check className="w-4 h-4 text-primary" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Zoom Level */}
+              <div className="pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Zoom Level</label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Scale the entire interface
+                    </p>
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {Math.round(settings.zoomLevel * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.8}
+                  max={1.2}
+                  step={0.05}
+                  value={settings.zoomLevel}
+                  onChange={(e) => setZoomLevel(Number(e.target.value))}
+                  className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer
+                    [&::-webkit-slider-thumb]:appearance-none
+                    [&::-webkit-slider-thumb]:w-4
+                    [&::-webkit-slider-thumb]:h-4
+                    [&::-webkit-slider-thumb]:rounded-full
+                    [&::-webkit-slider-thumb]:bg-primary
+                    [&::-webkit-slider-thumb]:cursor-pointer
+                    [&::-moz-range-thumb]:w-4
+                    [&::-moz-range-thumb]:h-4
+                    [&::-moz-range-thumb]:rounded-full
+                    [&::-moz-range-thumb]:bg-primary
+                    [&::-moz-range-thumb]:border-0
+                    [&::-moz-range-thumb]:cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>80%</span>
+                  <span>120%</span>
+                </div>
+              </div>
+
+              {/* Reset to Defaults */}
+              <div className="pt-3 border-t border-border">
+                <button
+                  onClick={resetToDefaults}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset to defaults
+                </button>
               </div>
             </div>
           </div>
