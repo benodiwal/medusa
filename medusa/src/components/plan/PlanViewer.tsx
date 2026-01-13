@@ -14,6 +14,7 @@ interface ViewerProps {
   onSelectAnnotation: (id: string | null) => void;
   onRemoveAnnotation: (id: string) => void;
   selectedAnnotationId: string | null;
+  readOnly?: boolean;
 }
 
 export interface ViewerHandle {
@@ -29,6 +30,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
   onSelectAnnotation,
   onRemoveAnnotation,
   selectedAnnotationId: _selectedAnnotationId,
+  readOnly = false,
 }, ref) => {
   const [copied, setCopied] = useState(false);
   const [showGlobalCommentInput, setShowGlobalCommentInput] = useState(false);
@@ -76,6 +78,8 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
   const onRemoveAnnotationRef = useRef(onRemoveAnnotation);
   const pendingSourceRef = useRef<any>(null);
   const isRestoringRef = useRef(false);
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   const [toolbarState, setToolbarState] = useState<{ element: HTMLElement; source: any } | null>(null);
   const [clickedAnnotation, setClickedAnnotation] = useState<{ id: string; element: HTMLElement } | null>(null);
   const [hoveredCodeBlock, setHoveredCodeBlock] = useState<{ block: Block; element: HTMLElement; annotation?: Annotation } | null>(null);
@@ -186,8 +190,14 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
     highlighterRef.current = highlighter;
 
     highlighter.on(Highlighter.event.CREATE, ({ sources }: { sources: any[] }) => {
-      // Skip showing toolbar when restoring persisted annotations
-      if (isRestoringRef.current) return;
+      // Skip showing toolbar when restoring persisted annotations or in read-only mode
+      if (isRestoringRef.current || readOnlyRef.current) {
+        // In read-only mode, remove the highlight since we don't want new annotations
+        if (readOnlyRef.current && sources.length > 0) {
+          highlighter.remove(sources[0].id);
+        }
+        return;
+      }
 
       if (sources.length > 0) {
         const source = sources[0];
@@ -207,10 +217,13 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
     });
 
     highlighter.on(Highlighter.event.CLICK, ({ id }: { id: string }) => {
-      // When clicking an existing annotation, show remove option
+      // When clicking an existing annotation, show remove option (unless read-only)
       const doms = highlighter.getDoms(id);
       if (doms?.length > 0) {
-        setClickedAnnotation({ id, element: doms[0] as HTMLElement });
+        // In read-only mode, just select the annotation (no remove toolbar)
+        if (!readOnlyRef.current) {
+          setClickedAnnotation({ id, element: doms[0] as HTMLElement });
+        }
         onSelectAnnotation(id);
       }
     });
@@ -371,7 +384,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
         className="w-full max-w-3xl bg-card border border-border/50 rounded-xl shadow-xl p-5 md:p-10 lg:p-14 relative"
       >
         <div className="absolute top-3 right-3 md:top-5 md:right-5 flex items-center gap-2">
-          {showGlobalCommentInput ? (
+          {!readOnly && (showGlobalCommentInput ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -424,7 +437,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
               </svg>
               <span className="hidden md:inline">Global comment</span>
             </button>
-          )}
+          ))}
 
           <button
             onClick={handleCopyPlan}
@@ -491,7 +504,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
           onClose={handleToolbarClose}
         />
 
-        {hoveredCodeBlock && !toolbarState && (
+        {hoveredCodeBlock && !toolbarState && !readOnly && (
           <CodeBlockToolbar
             element={hoveredCodeBlock.element}
             existingAnnotation={hoveredCodeBlock.annotation}
@@ -524,7 +537,7 @@ export const PlanViewer = forwardRef<ViewerHandle, ViewerProps>(({
         )}
 
         {/* Remove annotation toolbar - shows when clicking existing annotation */}
-        {clickedAnnotation && !toolbarState && (
+        {clickedAnnotation && !toolbarState && !readOnly && (
           <RemoveAnnotationToolbar
             element={clickedAnnotation.element}
             onRemove={handleRemoveAnnotation}

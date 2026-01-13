@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowLeft, Search, Clock, CheckCircle, XCircle, Loader2, X, Trash2 } from 'lucide-react';
-import { SimpleMarkdown } from '../components/SimpleMarkdown';
+import { ArrowLeft, Search, Clock, CheckCircle, XCircle, Loader2, X, Trash2, Eye } from 'lucide-react';
+import { HistoryPreviewModal } from '../components/history';
 
 interface HistoryItem {
   id: string;
@@ -22,7 +22,7 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<HistoryItem | null>(null);
   const [historyCount, setHistoryCount] = useState(0);
 
   const loadHistory = useCallback(async () => {
@@ -184,10 +184,7 @@ export default function History() {
             {history.map((item) => (
               <div
                 key={item.id}
-                onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
-                className={`p-4 bg-card border rounded-lg cursor-pointer transition-colors ${
-                  selectedItem?.id === item.id ? 'border-primary' : 'border-border hover:border-muted-foreground/30'
-                }`}
+                className="p-4 bg-card border border-border rounded-lg hover:border-muted-foreground/30 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -206,38 +203,37 @@ export default function History() {
                       {item.content.slice(0, 200)}...
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(item.completed_at)}
-                    </p>
-                    <p className="text-xs capitalize text-muted-foreground mt-1">
-                      {item.status}
-                    </p>
+                  <div className="flex items-start gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(item.completed_at)}
+                      </p>
+                      <p className="text-xs capitalize text-muted-foreground mt-1">
+                        {item.status}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setPreviewItem(item)}
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                      title="View plan"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                {/* Expanded view */}
-                {selectedItem?.id === item.id && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    {item.feedback && (
-                      <div className="mb-3">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Feedback:</p>
-                        <SimpleMarkdown content={item.feedback} />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Plan Content:</p>
-                      <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-lg overflow-x-auto max-h-64 overflow-y-auto">
-                        {item.content}
-                      </pre>
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Preview Modal */}
+      {previewItem && (
+        <HistoryPreviewModal
+          item={previewItem}
+          onClose={() => setPreviewItem(null)}
+        />
+      )}
     </div>
   );
 }
