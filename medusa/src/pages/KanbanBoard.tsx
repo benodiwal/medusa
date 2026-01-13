@@ -24,7 +24,7 @@ const HOOK_CONFIG = `{
   }
 }`;
 
-const HOOK_SCRIPT_URL = 'https://github.com/benodiwal/medusa/blob/main/medusa/scripts/medusa-plan-review.sh';
+const HOOK_SCRIPT_URL = 'https://github.com/benodiwal/medusa/blob/master/hooks/medusa-plan-review.sh';
 
 export default function KanbanBoard() {
   const [plans, setPlans] = useState<PlanItem[]>([]);
