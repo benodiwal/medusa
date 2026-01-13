@@ -2,6 +2,35 @@
 
 All notable changes to Medusa will be documented in this file.
 
+## [0.1.2] - 2026-01-13
+
+### Added
+
+- **Onboarding Guide** - Interactive setup guide for new users on home screen
+- **History Preview** - Preview modal for viewing approved/rejected plans from history
+- **Font Customization** - Customize fonts in settings
+- **Pricing Page** - Added pricing page with Coming Soon for Pro and Team tiers
+- **Mobile Share Page** - Fully responsive share page for mobile devices
+- **Landing Page Share** - Share component on landing page
+
+### Fixed
+
+- Hook script URL in onboarding guide
+- Mobile view layout on home page
+- Mobile scroll issue on share page
+- Share page DOM renderer and view issues
+- Consistent discount display (17% in both places)
+- Pricing updated to USD with Pricing link in header
+
+### Changed
+
+- Simplified onboarding to 3 steps with GitHub script link
+
+### Documentation
+
+- Added timeout auto-approval warning (recommend 86400s)
+- Added macOS unsigned app workaround instructions
+
 ## [0.1.1] - 2026-01-04
 
 ### Added
