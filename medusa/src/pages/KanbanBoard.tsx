@@ -1,17 +1,37 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Settings, RefreshCw, Search, X, Clock } from 'lucide-react';
+import { Settings, RefreshCw, Search, X, Clock, Copy, Check, ExternalLink } from 'lucide-react';
 import { PlanItem, PlanStatus } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+
+const HOOK_CONFIG = `{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/medusa-plan-review.sh",
+            "timeout": 86400
+          }
+        ]
+      }
+    ]
+  }
+}`;
+
+const HOOK_SCRIPT_URL = 'https://github.com/benodiwal/medusa/blob/master/hooks/medusa-plan-review.sh';
 
 export default function KanbanBoard() {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<PlanItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const previousPlanIdsRef = useRef<Set<string>>(new Set());
   const notificationPermissionRef = useRef<boolean>(false);
@@ -138,6 +158,16 @@ export default function KanbanBoard() {
   const workingPlans = filteredPlans.filter(p => p.status === PlanStatus.ChangesRequested);
   const approvedPlans = filteredPlans.filter(p => p.status === PlanStatus.Approved);
 
+  const handleCopy = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {
+      console.error('Failed to copy:', e);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -220,16 +250,106 @@ export default function KanbanBoard() {
       <main className="flex-1 p-6 overflow-x-auto">
         {plans.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center space-y-4 max-w-md">
-              <img
-                src="/medusa-logo.png"
-                alt="Medusa"
-                className="w-16 h-16 object-contain mx-auto opacity-50"
-              />
-              <h2 className="text-lg font-medium text-foreground">No Plans to Review</h2>
-              <p className="text-sm text-muted-foreground">
-                When Claude Code enters plan mode, plans will appear here for review.
-              </p>
+            <div className="max-w-lg space-y-6">
+              {/* Header */}
+              <div className="text-center space-y-2">
+                <img
+                  src="/medusa-logo.png"
+                  alt="Medusa"
+                  className="w-16 h-16 object-contain mx-auto"
+                />
+                <h2 className="text-xl font-semibold text-foreground">Welcome to Medusa</h2>
+                <p className="text-sm text-muted-foreground">
+                  Plan review tool for Claude Code
+                </p>
+              </div>
+
+              {/* Setup Steps */}
+              <div className="bg-card border border-border rounded-lg p-6 space-y-5">
+                <h3 className="font-medium text-foreground">Get Started</h3>
+
+                {/* Step 1 - Download Hook Script */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
+                      1
+                    </span>
+                    <span className="font-medium text-sm text-foreground">Download Hook Script</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Download the hook script and save it to <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">~/.claude/hooks/medusa-plan-review.sh</code>
+                  </p>
+                  <div className="ml-8">
+                    <a
+                      href={HOOK_SCRIPT_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View script on GitHub
+                    </a>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Then make it executable: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">chmod +x ~/.claude/hooks/medusa-plan-review.sh</code>
+                  </p>
+                </div>
+
+                {/* Step 2 - Configure Hook */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
+                      2
+                    </span>
+                    <span className="font-medium text-sm text-foreground">Configure Claude Code Hook</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    Add to ~/.claude/settings.json:
+                  </p>
+                  <div className="ml-8 relative">
+                    <pre className="bg-muted p-3 pr-10 rounded-lg text-xs text-foreground overflow-x-auto font-mono">
+                      {HOOK_CONFIG}
+                    </pre>
+                    <button
+                      onClick={() => handleCopy('config', HOOK_CONFIG)}
+                      className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-foreground hover:bg-background/50 rounded transition-colors"
+                      title={copiedId === 'config' ? 'Copied!' : 'Copy'}
+                    >
+                      {copiedId === 'config' ? (
+                        <Check className="w-3.5 h-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Step 3 - Use It */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
+                      3
+                    </span>
+                    <span className="font-medium text-sm text-foreground">Use Plan Mode in Claude Code</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-8">
+                    When Claude enters plan mode, plans will appear here for your review. Add annotations, request changes, or approve before Claude implements.
+                  </p>
+                </div>
+              </div>
+
+              {/* Documentation Link */}
+              <div className="text-center">
+                <a
+                  href="https://heymedusa.net/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View Documentation
+                </a>
+              </div>
             </div>
           </div>
         ) : filteredPlans.length === 0 ? (
