@@ -69,18 +69,12 @@ jobs:
         working-directory: medusa
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run tauri build -- --target aarch64-apple-darwin
 
       - name: Build Tauri app (Intel)
         working-directory: medusa
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run tauri build -- --target x86_64-apple-darwin
 
       - name: Upload Apple Silicon artifact
