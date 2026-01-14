@@ -1,0 +1,684 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import {
+  ArrowLeft,
+  Send,
+  Play,
+  Square,
+  FileCode,
+  MessageSquare,
+  GitBranch,
+  FolderOpen,
+  Bot,
+  Loader2,
+  RefreshCw,
+  Plus,
+  Minus,
+  Wrench,
+} from 'lucide-react';
+import { Task } from '../types';
+
+interface AgentOutputEvent {
+  task_id: string;
+  line: string;
+  is_error: boolean;
+}
+
+interface ParsedMessage {
+  type: 'system' | 'assistant' | 'tool' | 'result' | 'error' | 'raw' | 'user';
+  content: string;
+  timestamp: Date;
+  toolName?: string;
+  isSuccess?: boolean;
+}
+
+// Helper to extract text from various content formats
+function extractTextContent(content: any): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .filter((c: any) => c.type === 'text')
+      .map((c: any) => c.text || '')
+      .join('\n');
+  }
+  return '';
+}
+
+// Format tool usage in a friendly way
+function formatToolUsage(toolName: string, input: any): string {
+  switch (toolName) {
+    case 'Read':
+      return `Reading ${input?.file_path || 'file'}`;
+    case 'Edit':
+      return `Editing ${input?.file_path || 'file'}`;
+    case 'Write':
+      return `Writing ${input?.file_path || 'file'}`;
+    case 'Bash':
+      const cmd = input?.command || '';
+      return `Running: ${cmd.length > 50 ? cmd.slice(0, 50) + '...' : cmd}`;
+    case 'Glob':
+      return `Searching for ${input?.pattern || 'files'}`;
+    case 'Grep':
+      return `Searching for "${input?.pattern || ''}"`;
+    case 'Task':
+      return `Starting subtask: ${input?.description || 'task'}`;
+    case 'TodoWrite':
+      return 'Updating task list';
+    case 'WebSearch':
+      return `Searching web: ${input?.query || ''}`;
+    case 'WebFetch':
+      return `Fetching ${input?.url || 'URL'}`;
+    default:
+      return `Using ${toolName}`;
+  }
+}
+
+function parseClaudeLine(line: string): ParsedMessage | null {
+  try {
+    const data = JSON.parse(line);
+
+    // Show assistant text messages
+    if (data.type === 'assistant' && data.message?.content) {
+      const content = data.message.content;
+
+      // Check for text content first
+      const textContent = extractTextContent(content);
+      if (textContent && textContent.trim()) {
+        return {
+          type: 'assistant',
+          content: textContent,
+          timestamp: new Date(),
+        };
+      }
+
+      // Show tool usage in a friendly way
+      if (Array.isArray(content)) {
+        const toolUse = content.find((c: any) => c.type === 'tool_use');
+        if (toolUse) {
+          return {
+            type: 'tool',
+            content: formatToolUsage(toolUse.name, toolUse.input),
+            toolName: toolUse.name,
+            timestamp: new Date(),
+          };
+        }
+      }
+    }
+
+    // Skip result messages and other noise
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export default function TaskDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const [task, setTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<ParsedMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [sending, setSending] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [changedFiles, setChangedFiles] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileDiff, setFileDiff] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'chat' | 'diff'>('chat');
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Clear selected file when it's no longer in the changed files list
+  useEffect(() => {
+    if (selectedFile && !changedFiles.includes(selectedFile)) {
+      setSelectedFile(null);
+      setFileDiff('');
+    }
+  }, [changedFiles, selectedFile]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const processedLinesRef = useRef<Set<string>>(new Set());
+
+  const loadTask = useCallback(async () => {
+    if (!id) return;
+    try {
+      const t = await invoke<Task | null>('get_task', { id });
+      setTask(t);
+
+      // Check if agent has active session
+      const active = await invoke<boolean>('has_active_agent_session', { taskId: id });
+      setHasActiveSession(active);
+
+      // Load changed files if task has worktree
+      if (t?.worktree_path) {
+        try {
+          const files = await invoke<string[]>('get_task_changed_files', { taskId: id });
+          setChangedFiles(files);
+        } catch (e) {
+          console.error('Failed to load changed files:', e);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load task:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  // Load initial data
+  useEffect(() => {
+    // Reset tracking when task changes
+    processedLinesRef.current.clear();
+    setMessages([]);
+
+    loadTask();
+
+    // Load existing output
+    const loadOutput = async () => {
+      if (!id) return;
+      try {
+        // Get task to show initial prompt
+        const t = await invoke<Task | null>('get_task', { id });
+
+        const lines = await invoke<string[]>('get_task_agent_output', { taskId: id });
+
+        // Mark all loaded lines as processed to avoid duplicates from events
+        lines.forEach(line => processedLinesRef.current.add(line));
+
+        const parsed = lines.map(parseClaudeLine).filter((m): m is ParsedMessage => m !== null);
+
+        // Add task description as first user message if we have output
+        if (t && t.description && (parsed.length > 0 || t.agent_pid)) {
+          setMessages([
+            { type: 'user', content: t.description, timestamp: new Date(t.created_at * 1000) },
+            ...parsed
+          ]);
+        } else {
+          setMessages(parsed);
+        }
+
+        // Auto-scroll to bottom after loading
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 100);
+      } catch (e) {
+        console.error('Failed to load output:', e);
+      }
+    };
+    loadOutput();
+  }, [id, loadTask]);
+
+  // Listen for agent output
+  useEffect(() => {
+    if (!id) return;
+
+    const unlisten = listen<AgentOutputEvent>('agent-output', (event) => {
+      if (event.payload.task_id === id) {
+        // Skip if we've already processed this line
+        if (processedLinesRef.current.has(event.payload.line)) {
+          return;
+        }
+        processedLinesRef.current.add(event.payload.line);
+
+        const parsed = parseClaudeLine(event.payload.line);
+        if (parsed) {
+          // Only stop thinking when we get an actual displayable message
+          setThinking(false);
+          setMessages((prev) => [...prev, parsed]);
+        }
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [id]);
+
+  // Listen for agent status changes
+  useEffect(() => {
+    if (!id) return;
+
+    const unlisten = listen('agent-status', () => {
+      loadTask();
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [id, loadTask]);
+
+  // Auto-scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Poll for task updates
+  useEffect(() => {
+    const interval = setInterval(loadTask, 5000);
+    return () => clearInterval(interval);
+  }, [loadTask]);
+
+  const handleStartAgent = async () => {
+    if (!task) return;
+    try {
+      // Add description as initial user message before starting
+      if (task.description) {
+        setMessages([{ type: 'user', content: task.description, timestamp: new Date() }]);
+      }
+
+      setThinking(true);
+      await invoke('start_task_agent', { taskId: task.id });
+      loadTask();
+    } catch (error) {
+      console.error('Failed to start agent:', error);
+      alert(`Failed to start agent: ${error}`);
+      setThinking(false);
+    }
+  };
+
+  const handleStopAgent = async () => {
+    if (!task) return;
+    try {
+      await invoke('stop_task_agent', { taskId: task.id });
+      loadTask();
+    } catch (error) {
+      console.error('Failed to stop agent:', error);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!task || !inputValue.trim() || sending) return;
+
+    setSending(true);
+    try {
+      // Add user message to UI immediately
+      setMessages((prev) => [
+        ...prev,
+        { type: 'user', content: inputValue.trim(), timestamp: new Date() },
+      ]);
+
+      setThinking(true);
+      await invoke('send_agent_message', { taskId: task.id, message: inputValue.trim() });
+      setInputValue('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert(`Failed to send message: ${error}`);
+      setThinking(false);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleSelectFile = async (file: string) => {
+    if (!task) return;
+    setSelectedFile(file);
+    try {
+      const diff = await invoke<string>('get_task_file_diff', { taskId: task.id, filePath: file });
+      setFileDiff(diff);
+    } catch (error) {
+      console.error('Failed to load file diff:', error);
+      setFileDiff('');
+    }
+  };
+
+  const getMessageIcon = (msg: ParsedMessage) => {
+    switch (msg.type) {
+      case 'user':
+        return <MessageSquare className="w-4 h-4 text-primary" />;
+      case 'assistant':
+        return <Bot className="w-4 h-4 text-primary" />;
+      case 'tool':
+        return <Wrench className="w-4 h-4 text-muted-foreground" />;
+      default:
+        return <Bot className="w-4 h-4 text-muted-foreground" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Task not found</p>
+          <button onClick={() => navigate('/tasks')} className="text-primary hover:underline">
+            Back to Tasks
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Agent is truly running only if we have an active session
+  const isRunning = !!task.agent_pid && hasActiveSession;
+  // Can resume if there's a session_id but no active session
+  const canResume = !!task.session_id && !hasActiveSession;
+  const canSendMessage = hasActiveSession && !sending;
+  const projectName = task.project_path.split('/').pop() || 'Unknown';
+
+  return (
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Header - Fixed */}
+      <header className="border-b border-border px-6 py-3 shrink-0 bg-background z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/tasks')}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <h1 className="text-base font-semibold text-foreground">{task.title}</h1>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <FolderOpen className="w-3 h-3" />
+                  {projectName}
+                </span>
+                {task.branch && (
+                  <span className="flex items-center gap-1">
+                    <GitBranch className="w-3 h-3" />
+                    {task.branch}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isRunning ? (
+              <>
+                <span className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                  <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  Running
+                </span>
+                <button
+                  onClick={handleStopAgent}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  <Square className="w-4 h-4" />
+                  Stop
+                </button>
+              </>
+            ) : canResume ? (
+              <>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                  Session paused
+                </span>
+                <button
+                  onClick={handleStartAgent}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  <Play className="w-4 h-4" />
+                  Resume
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleStartAgent}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Play className="w-4 h-4" />
+                Start Agent
+              </button>
+            )}
+            <button
+              onClick={loadTask}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Tab Bar - Fixed */}
+      <div className="border-b border-border px-6 shrink-0 bg-background">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'chat'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Chat
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('diff')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'diff'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileCode className="w-4 h-4" />
+              Changes
+              {changedFiles.length > 0 && (
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                  {changedFiles.length}
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex min-h-0">
+        {activeTab === 'chat' ? (
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Messages - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  {isRunning ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      <span>Waiting for response...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Bot className="w-12 h-12 mx-auto text-muted-foreground/50" />
+                      <p>Start the agent to begin chatting</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-3 ${
+                      msg.type === 'user' ? 'justify-end' : ''
+                    }`}
+                  >
+                    {msg.type !== 'user' && (
+                      <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        msg.type === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border'
+                      }`}
+                    >
+                      <div
+                        className={`text-sm whitespace-pre-wrap break-words ${
+                          msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' : ''
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                    {msg.type === 'user' && (
+                      <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
+                    )}
+                  </div>
+                ))
+              )}
+              {/* Thinking indicator */}
+              {thinking && (
+                <div className="flex gap-3">
+                  <div className="shrink-0 mt-1">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="bg-card border border-border rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input - Fixed at bottom */}
+            <div className="border-t border-border p-4 shrink-0 bg-background">
+              <div className="flex gap-2">
+                <textarea
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    canSendMessage
+                      ? 'Type a message...'
+                      : canResume
+                      ? 'Click Resume to continue the session...'
+                      : isRunning
+                      ? 'Connecting...'
+                      : 'Start the agent first...'
+                  }
+                  disabled={!canSendMessage}
+                  rows={1}
+                  className="flex-1 px-4 py-2 text-sm bg-muted border border-border rounded-lg resize-none focus:outline-none focus:border-primary disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!canSendMessage || !inputValue.trim()}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Press Enter to send, Shift+Enter for new line
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* Diff View */
+          <div className="flex-1 flex">
+            {/* File List */}
+            <div className="w-64 border-r border-border overflow-y-auto">
+              <div className="p-3 border-b border-border">
+                <h3 className="text-sm font-medium text-foreground">Changed Files</h3>
+              </div>
+              {changedFiles.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  No changes yet
+                </div>
+              ) : (
+                <div className="p-2 space-y-1">
+                  {changedFiles.map((file) => (
+                    <button
+                      key={file}
+                      onClick={() => handleSelectFile(file)}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                        selectedFile === file
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{file}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Diff Content */}
+            <div className="flex-1 overflow-auto bg-background">
+              {selectedFile ? (
+                fileDiff ? (
+                  <pre className="p-4 text-sm font-mono">
+                    {fileDiff.split('\n')
+                      .filter((line) => {
+                        // Filter out diff header lines
+                        if (line.startsWith('diff --git')) return false;
+                        if (line.startsWith('new file mode')) return false;
+                        if (line.startsWith('index ')) return false;
+                        if (line.startsWith('--- ')) return false;
+                        if (line.startsWith('+++ ')) return false;
+                        return true;
+                      })
+                      .map((line, i) => {
+                      let className = 'text-muted-foreground';
+                      let icon = null;
+
+                      if (line.startsWith('+')) {
+                        className = 'text-green-500 bg-green-500/10';
+                        icon = <Plus className="w-3 h-3 inline mr-2" />;
+                      } else if (line.startsWith('-')) {
+                        className = 'text-red-500 bg-red-500/10';
+                        icon = <Minus className="w-3 h-3 inline mr-2" />;
+                      } else if (line.startsWith('@@')) {
+                        className = 'text-primary';
+                      }
+
+                      return (
+                        <div key={i} className={`${className} px-2 -mx-2`}>
+                          {icon}
+                          {line}
+                        </div>
+                      );
+                    })}
+                  </pre>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    No changes in this file
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Select a file to view changes
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

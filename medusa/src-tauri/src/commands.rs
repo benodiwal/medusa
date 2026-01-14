@@ -809,3 +809,639 @@ pub async fn get_history_count() -> Result<u32, String> {
 
     Ok(count)
 }
+
+// ============== Kanban Task Management (Medusa 2.0) ==============
+
+/// Task status in the Kanban board
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum TaskStatus {
+    Backlog,
+    Planning,
+    InProgress,
+    Review,
+    Done,
+}
+
+impl std::fmt::Display for TaskStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TaskStatus::Backlog => write!(f, "Backlog"),
+            TaskStatus::Planning => write!(f, "Planning"),
+            TaskStatus::InProgress => write!(f, "InProgress"),
+            TaskStatus::Review => write!(f, "Review"),
+            TaskStatus::Done => write!(f, "Done"),
+        }
+    }
+}
+
+impl std::str::FromStr for TaskStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Backlog" => Ok(TaskStatus::Backlog),
+            "Planning" => Ok(TaskStatus::Planning),
+            "InProgress" => Ok(TaskStatus::InProgress),
+            "Review" => Ok(TaskStatus::Review),
+            "Done" => Ok(TaskStatus::Done),
+            _ => Err(format!("Invalid task status: {}", s)),
+        }
+    }
+}
+
+/// A task in the Kanban board
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KanbanTask {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub status: TaskStatus,
+    pub project_path: String,
+    pub branch: Option<String>,
+    pub worktree_path: Option<String>,
+    pub plan_id: Option<String>,
+    pub agent_pid: Option<u32>,
+    pub session_id: Option<String>,  // Claude Code session ID for resuming
+    pub started_at: Option<u64>,
+    pub completed_at: Option<u64>,
+    pub files_changed: Option<Vec<String>>,
+    pub diff_summary: Option<String>,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// Request to create a new task
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateTaskRequest {
+    pub title: String,
+    pub description: Option<String>,
+    pub project_path: String,
+}
+
+/// Request to update a task
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateTaskRequest {
+    pub id: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub branch: Option<String>,
+    pub plan_id: Option<String>,
+}
+
+/// Get the path to the tasks database
+fn get_tasks_db_path() -> PathBuf {
+    let db_dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".medusa");
+    fs::create_dir_all(&db_dir).ok();
+    db_dir.join("tasks.db")
+}
+
+/// Initialize tasks database with schema
+fn init_tasks_db() -> Result<Connection, String> {
+    let db_path = get_tasks_db_path();
+    let conn = Connection::open(&db_path)
+        .map_err(|e| format!("Failed to open tasks database: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS kanban_tasks (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'Backlog',
+            project_path TEXT NOT NULL,
+            branch TEXT,
+            worktree_path TEXT,
+            plan_id TEXT,
+            agent_pid INTEGER,
+            session_id TEXT,
+            started_at INTEGER,
+            completed_at INTEGER,
+            files_changed TEXT,
+            diff_summary TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create kanban_tasks table: {}", e))?;
+
+    // Migration: add session_id column if it doesn't exist (for existing databases)
+    conn.execute(
+        "ALTER TABLE kanban_tasks ADD COLUMN session_id TEXT",
+        [],
+    ).ok(); // Ignore error if column already exists
+
+    // Create indexes
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_kanban_tasks_status ON kanban_tasks(status)",
+        [],
+    ).ok();
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_kanban_tasks_project ON kanban_tasks(project_path)",
+        [],
+    ).ok();
+
+    Ok(conn)
+}
+
+/// Create a new task
+#[tauri::command]
+pub async fn create_task(request: CreateTaskRequest) -> Result<KanbanTask, String> {
+    info!("Creating new task: {}", request.title);
+
+    let conn = init_tasks_db()?;
+    let id = Uuid::new_v4().to_string();
+    let now_ts = now();
+
+    let task = KanbanTask {
+        id: id.clone(),
+        title: request.title,
+        description: request.description.unwrap_or_default(),
+        status: TaskStatus::Backlog,
+        project_path: request.project_path,
+        branch: None,
+        worktree_path: None,
+        plan_id: None,
+        agent_pid: None,
+        session_id: None,
+        started_at: None,
+        completed_at: None,
+        files_changed: None,
+        diff_summary: None,
+        created_at: now_ts,
+        updated_at: now_ts,
+    };
+
+    conn.execute(
+        "INSERT INTO kanban_tasks (id, title, description, status, project_path, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![task.id, task.title, task.description, task.status.to_string(), task.project_path, task.created_at, task.updated_at],
+    ).map_err(|e| format!("Failed to create task: {}", e))?;
+
+    info!("Task {} created", id);
+    Ok(task)
+}
+
+/// Get all tasks
+#[tauri::command]
+pub async fn get_all_tasks() -> Result<Vec<KanbanTask>, String> {
+    info!("Getting all tasks");
+
+    let conn = init_tasks_db()?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
+                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+         FROM kanban_tasks ORDER BY created_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let tasks_iter = stmt.query_map([], |row| {
+        let status_str: String = row.get(3)?;
+        let files_changed_str: Option<String> = row.get(12)?;
+        let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(KanbanTask {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            description: row.get(2)?,
+            status: status_str.parse().unwrap_or(TaskStatus::Backlog),
+            project_path: row.get(4)?,
+            branch: row.get(5)?,
+            worktree_path: row.get(6)?,
+            plan_id: row.get(7)?,
+            agent_pid: row.get(8)?,
+            session_id: row.get(9)?,
+            started_at: row.get(10)?,
+            completed_at: row.get(11)?,
+            files_changed,
+            diff_summary: row.get(13)?,
+            created_at: row.get(14)?,
+            updated_at: row.get(15)?,
+        })
+    }).map_err(|e| format!("Failed to query tasks: {}", e))?;
+
+    let mut tasks = Vec::new();
+    for task in tasks_iter {
+        if let Ok(task) = task {
+            tasks.push(task);
+        }
+    }
+
+    info!("Retrieved {} tasks", tasks.len());
+    Ok(tasks)
+}
+
+/// Get a single task by ID
+#[tauri::command]
+pub async fn get_task(id: String) -> Result<Option<KanbanTask>, String> {
+    info!("Getting task: {}", id);
+
+    let conn = init_tasks_db()?;
+
+    let result = conn.query_row(
+        "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
+                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+         FROM kanban_tasks WHERE id = ?1",
+        params![id],
+        |row| {
+            let status_str: String = row.get(3)?;
+            let files_changed_str: Option<String> = row.get(12)?;
+            let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
+
+            Ok(KanbanTask {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                status: status_str.parse().unwrap_or(TaskStatus::Backlog),
+                project_path: row.get(4)?,
+                branch: row.get(5)?,
+                worktree_path: row.get(6)?,
+                plan_id: row.get(7)?,
+                agent_pid: row.get(8)?,
+                session_id: row.get(9)?,
+                started_at: row.get(10)?,
+                completed_at: row.get(11)?,
+                files_changed,
+                diff_summary: row.get(13)?,
+                created_at: row.get(14)?,
+                updated_at: row.get(15)?,
+            })
+        },
+    );
+
+    match result {
+        Ok(task) => Ok(Some(task)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("Failed to get task: {}", e)),
+    }
+}
+
+/// Update a task
+#[tauri::command]
+pub async fn update_task(request: UpdateTaskRequest) -> Result<KanbanTask, String> {
+    info!("Updating task: {}", request.id);
+
+    let task_id = request.id.clone();
+
+    // Do the database update in a block so all non-Send types are dropped before await
+    {
+        let conn = init_tasks_db()?;
+        let now_ts = now();
+
+        // Simple approach: update all fields, using COALESCE to keep existing values
+        conn.execute(
+            "UPDATE kanban_tasks SET
+                title = COALESCE(?1, title),
+                description = COALESCE(?2, description),
+                status = COALESCE(?3, status),
+                branch = COALESCE(?4, branch),
+                plan_id = COALESCE(?5, plan_id),
+                updated_at = ?6
+             WHERE id = ?7",
+            params![
+                request.title,
+                request.description,
+                request.status.map(|s| s.to_string()),
+                request.branch,
+                request.plan_id,
+                now_ts,
+                request.id
+            ],
+        ).map_err(|e| format!("Failed to update task: {}", e))?;
+    }
+
+    // Return updated task
+    get_task(task_id).await?.ok_or_else(|| "Task not found after update".to_string())
+}
+
+/// Update task status (convenience method for drag-and-drop)
+#[tauri::command]
+pub async fn update_task_status(id: String, status: TaskStatus) -> Result<KanbanTask, String> {
+    info!("Updating task {} status to {:?}", id, status);
+
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    // Set started_at when moving to InProgress
+    let started_at = if status == TaskStatus::InProgress {
+        Some(now_ts)
+    } else {
+        None
+    };
+
+    // Set completed_at when moving to Done
+    let completed_at = if status == TaskStatus::Done {
+        Some(now_ts)
+    } else {
+        None
+    };
+
+    conn.execute(
+        "UPDATE kanban_tasks SET status = ?1, updated_at = ?2, started_at = COALESCE(?3, started_at), completed_at = ?4 WHERE id = ?5",
+        params![status.to_string(), now_ts, started_at, completed_at, id],
+    ).map_err(|e| format!("Failed to update task status: {}", e))?;
+
+    get_task(id).await?.ok_or_else(|| "Task not found after update".to_string())
+}
+
+/// Delete a task
+#[tauri::command]
+pub async fn delete_task(id: String) -> Result<(), String> {
+    info!("Deleting task: {}", id);
+
+    let conn = init_tasks_db()?;
+
+    conn.execute(
+        "DELETE FROM kanban_tasks WHERE id = ?1",
+        params![id],
+    ).map_err(|e| format!("Failed to delete task: {}", e))?;
+
+    info!("Task {} deleted", id);
+    Ok(())
+}
+
+/// Get tasks by project path
+#[tauri::command]
+pub async fn get_tasks_by_project(project_path: String) -> Result<Vec<KanbanTask>, String> {
+    info!("Getting tasks for project: {}", project_path);
+
+    let conn = init_tasks_db()?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
+                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+         FROM kanban_tasks WHERE project_path = ?1 ORDER BY created_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let tasks_iter = stmt.query_map(params![project_path], |row| {
+        let status_str: String = row.get(3)?;
+        let files_changed_str: Option<String> = row.get(12)?;
+        let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(KanbanTask {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            description: row.get(2)?,
+            status: status_str.parse().unwrap_or(TaskStatus::Backlog),
+            project_path: row.get(4)?,
+            branch: row.get(5)?,
+            worktree_path: row.get(6)?,
+            plan_id: row.get(7)?,
+            agent_pid: row.get(8)?,
+            session_id: row.get(9)?,
+            started_at: row.get(10)?,
+            completed_at: row.get(11)?,
+            files_changed,
+            diff_summary: row.get(13)?,
+            created_at: row.get(14)?,
+            updated_at: row.get(15)?,
+        })
+    }).map_err(|e| format!("Failed to query tasks: {}", e))?;
+
+    let mut tasks = Vec::new();
+    for task in tasks_iter {
+        if let Ok(task) = task {
+            tasks.push(task);
+        }
+    }
+
+    info!("Retrieved {} tasks for project", tasks.len());
+    Ok(tasks)
+}
+
+// ============== Task Agent Commands (Phase 2) ==============
+
+use crate::task_agent::{TaskAgentInfo, TASK_AGENT_MANAGER};
+
+/// Start an agent for a task
+#[tauri::command]
+pub async fn start_task_agent(
+    app: tauri::AppHandle,
+    task_id: String,
+    prompt: Option<String>,
+) -> Result<TaskAgentInfo, String> {
+    info!("Starting agent for task: {}", task_id);
+
+    // Get the task to find project path
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    // Build prompt from task info if not provided
+    let prompt = prompt.unwrap_or_else(|| {
+        format!(
+            "Task: {}\n\nDescription: {}\n\nPlease complete this task.",
+            task.title,
+            task.description
+        )
+    });
+
+    // Start the agent
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    let agent_info = manager.start_agent(&task_id, &task.project_path, &prompt, app)
+        .map_err(|e| format!("Failed to start agent: {}", e))?;
+
+    // Update task with agent info
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET
+            status = 'InProgress',
+            agent_pid = ?1,
+            branch = ?2,
+            worktree_path = ?3,
+            started_at = ?4,
+            updated_at = ?5
+         WHERE id = ?6",
+        params![
+            agent_info.pid,
+            agent_info.branch,
+            agent_info.worktree_path,
+            now_ts,
+            now_ts,
+            task_id
+        ],
+    ).map_err(|e| format!("Failed to update task: {}", e))?;
+
+    info!("Agent started for task {} with PID {}", task_id, agent_info.pid);
+    Ok(agent_info)
+}
+
+/// Stop an agent for a task
+#[tauri::command]
+pub async fn stop_task_agent(task_id: String) -> Result<(), String> {
+    info!("Stopping agent for task: {}", task_id);
+
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    manager.stop_agent(&task_id)
+        .map_err(|e| format!("Failed to stop agent: {}", e))?;
+
+    // Update task status
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET agent_pid = NULL, status = 'Review', updated_at = ?1 WHERE id = ?2",
+        params![now_ts, task_id],
+    ).map_err(|e| format!("Failed to update task: {}", e))?;
+
+    info!("Agent stopped for task {}", task_id);
+    Ok(())
+}
+
+/// Get agent info for a task
+#[tauri::command]
+pub async fn get_task_agent(task_id: String) -> Result<Option<TaskAgentInfo>, String> {
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    Ok(manager.get_agent(&task_id))
+}
+
+/// Get agent output for a task
+#[tauri::command]
+pub async fn get_task_agent_output(task_id: String) -> Result<Vec<String>, String> {
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    Ok(manager.get_agent_output(&task_id).unwrap_or_default())
+}
+
+/// Cleanup agent (stop and remove worktree)
+#[tauri::command]
+pub async fn cleanup_task_agent(task_id: String) -> Result<(), String> {
+    info!("Cleaning up agent for task: {}", task_id);
+
+    // Get task to find project path
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    manager.cleanup_agent(&task_id, &task.project_path)
+        .map_err(|e| format!("Failed to cleanup agent: {}", e))?;
+
+    // Update task
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET agent_pid = NULL, worktree_path = NULL, updated_at = ?1 WHERE id = ?2",
+        params![now_ts, task_id],
+    ).map_err(|e| format!("Failed to update task: {}", e))?;
+
+    info!("Agent cleaned up for task {}", task_id);
+    Ok(())
+}
+
+/// Get diff for a task's worktree
+#[tauri::command]
+pub async fn get_task_diff(task_id: String) -> Result<String, String> {
+    use crate::git::GitManager;
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let git = GitManager::new(task.project_path)
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    git.get_worktree_diff(&task_id)
+        .map_err(|e| format!("Failed to get diff: {}", e))
+}
+
+/// Get changed files for a task's worktree
+#[tauri::command]
+pub async fn get_task_changed_files(task_id: String) -> Result<Vec<String>, String> {
+    use crate::git::GitManager;
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let git = GitManager::new(task.project_path)
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    git.get_worktree_changed_files(&task_id)
+        .map_err(|e| format!("Failed to get changed files: {}", e))
+}
+
+/// Send a message to a running agent
+#[tauri::command]
+pub async fn send_agent_message(task_id: String, message: String) -> Result<(), String> {
+    info!("Sending message to agent {}: {}", task_id, message);
+
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    manager.send_message(&task_id, &message)
+        .map_err(|e| format!("Failed to send message: {}", e))
+}
+
+/// Check if agent has active session
+#[tauri::command]
+pub async fn has_active_agent_session(task_id: String) -> Result<bool, String> {
+    let manager = TASK_AGENT_MANAGER.lock()
+        .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+
+    Ok(manager.has_active_session(&task_id))
+}
+
+/// Get file diff for a specific file in task worktree
+#[tauri::command]
+pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<String, String> {
+    use std::process::Command;
+    use std::fs;
+    use std::path::Path;
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let worktree_path = format!("{}/.medusa-worktrees/{}", task.project_path, task_id);
+    let full_file_path = Path::new(&worktree_path).join(&file_path);
+
+    // First try git diff for tracked files
+    let output = Command::new("git")
+        .args(["diff", "HEAD", "--", &file_path])
+        .current_dir(&worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    let diff_output = String::from_utf8_lossy(&output.stdout).to_string();
+
+    // If diff is empty, check if it's a new file
+    if diff_output.trim().is_empty() && full_file_path.exists() {
+        // Check if file is untracked
+        let status_output = Command::new("git")
+            .args(["ls-files", "--others", "--exclude-standard", "--", &file_path])
+            .current_dir(&worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to check file status: {}", e))?;
+
+        let is_untracked = !String::from_utf8_lossy(&status_output.stdout).trim().is_empty();
+
+        if is_untracked {
+            // Read file content and format as new file diff
+            let content = fs::read_to_string(&full_file_path)
+                .map_err(|e| format!("Failed to read file: {}", e))?;
+
+            let mut diff = format!("diff --git a/{} b/{}\n", file_path, file_path);
+            diff.push_str("new file mode 100644\n");
+            diff.push_str(&format!("--- /dev/null\n"));
+            diff.push_str(&format!("+++ b/{}\n", file_path));
+            diff.push_str("@@ -0,0 +1 @@\n");
+
+            for line in content.lines() {
+                diff.push_str(&format!("+{}\n", line));
+            }
+
+            return Ok(diff);
+        }
+    }
+
+    Ok(diff_output)
+}

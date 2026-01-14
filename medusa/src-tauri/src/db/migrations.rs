@@ -74,5 +74,44 @@ pub fn all() -> Vec<Migration> {
                             ",
             kind: MigrationKind::Up,
         },
+
+        // Medusa 2.0: Kanban task management
+        Migration {
+            version: 4,
+            description: "add kanban tasks for task management",
+            sql: "
+                CREATE TABLE kanban_tasks (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'Backlog',
+                    project_path TEXT NOT NULL,
+                    branch TEXT,
+                    worktree_path TEXT,
+                    plan_id TEXT,
+                    agent_pid INTEGER,
+                    started_at INTEGER,
+                    completed_at INTEGER,
+                    files_changed TEXT,
+                    diff_summary TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+
+                CREATE INDEX idx_kanban_tasks_status ON kanban_tasks(status);
+                CREATE INDEX idx_kanban_tasks_project ON kanban_tasks(project_path);
+            ",
+            kind: MigrationKind::Up,
+        },
+
+        // Add session_id for Claude Code session resumption
+        Migration {
+            version: 5,
+            description: "add session_id for resuming Claude Code sessions",
+            sql: "
+                ALTER TABLE kanban_tasks ADD COLUMN session_id TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 }
