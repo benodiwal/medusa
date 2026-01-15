@@ -1645,6 +1645,27 @@ pub struct TaskCommit {
 #[tauri::command]
 pub async fn send_task_to_review(task_id: String) -> Result<(), String> {
     use std::process::Command;
+    use std::sync::Mutex;
+    use once_cell::sync::Lazy;
+
+    // Prevent concurrent executions for the same task
+    static REVIEW_LOCKS: Lazy<Mutex<std::collections::HashSet<String>>> = Lazy::new(|| Mutex::new(std::collections::HashSet::new()));
+
+    // Check if already processing this task
+    {
+        let mut locks = REVIEW_LOCKS.lock().map_err(|e| format!("Lock error: {}", e))?;
+        if locks.contains(&task_id) {
+            return Err("Task is already being sent to review".to_string());
+        }
+        locks.insert(task_id.clone());
+    }
+
+    // Ensure we remove the lock when done (even on error)
+    let _guard = scopeguard::guard(task_id.clone(), |id| {
+        if let Ok(mut locks) = REVIEW_LOCKS.lock() {
+            locks.remove(&id);
+        }
+    });
 
     info!("Sending task {} to review", task_id);
 
@@ -1667,14 +1688,18 @@ pub async fn send_task_to_review(task_id: String) -> Result<(), String> {
         info!("Task {} has uncommitted changes, asking Claude to commit", task_id);
 
         // Use Claude Code to create a commit with a good message
+        // Use shell wrapper to ensure nvm/claude is available
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
         let commit_prompt = "Commit all the current changes with a concise one-line commit message that describes what was done. Use conventional commit format (feat:, fix:, etc). Do NOT include Co-Authored-By. Just run git add -A and git commit.";
 
-        let output = Command::new("claude")
-            .args([
-                "-p", commit_prompt,
-                "--allowedTools", "Bash",
-                "--max-turns", "3",
-            ])
+        let shell_cmd = format!(
+            "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; claude -p '{}' --allowedTools Bash --max-turns 3",
+            commit_prompt.replace("'", "'\\''")
+        );
+
+        let output = Command::new("/bin/zsh")
+            .args(["-c", &shell_cmd])
+            .env("HOME", &home)
             .current_dir(worktree_path)
             .output()
             .map_err(|e| format!("Failed to run Claude for commit: {}", e))?;

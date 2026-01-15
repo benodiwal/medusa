@@ -82,10 +82,66 @@ impl GitManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+
+            // Check if this is a merge conflict
+            if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") || stderr.contains("Automatic merge failed") {
+                // Get list of conflicting files
+                let conflict_files = self.get_conflict_files()?;
+
+                // Abort the merge to leave repo in clean state
+                let _ = Command::new("git")
+                    .args(["merge", "--abort"])
+                    .current_dir(&self.repo_path)
+                    .output();
+
+                if conflict_files.is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Merge conflict detected. Please resolve conflicts manually:\n\
+                        1. cd {}\n\
+                        2. git merge {}\n\
+                        3. Resolve conflicts in your editor\n\
+                        4. git add . && git commit",
+                        self.repo_path,
+                        source_branch
+                    ));
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Merge conflict in {} file(s):\n  • {}\n\n\
+                        Please resolve conflicts manually:\n\
+                        1. cd {}\n\
+                        2. git merge {}\n\
+                        3. Resolve conflicts in your editor\n\
+                        4. git add . && git commit",
+                        conflict_files.len(),
+                        conflict_files.join("\n  • "),
+                        self.repo_path,
+                        source_branch
+                    ));
+                }
+            }
+
             return Err(anyhow::anyhow!("Merge failed: {}", stderr));
         }
 
         Ok(())
+    }
+
+    /// Get list of files with merge conflicts
+    fn get_conflict_files(&self) -> Result<Vec<String>> {
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=U"])
+            .current_dir(&self.repo_path)
+            .output()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let files: Vec<String> = stdout
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| l.to_string())
+            .collect();
+
+        Ok(files)
     }
 
     pub fn delete_branch(&self, branch_name: &str) -> Result<()> {

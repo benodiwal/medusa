@@ -75,6 +75,56 @@ fn load_session_id(task_id: &str) -> Option<String> {
     }
 }
 
+/// Check if Claude Code CLI is installed and accessible
+pub fn check_claude_cli_installed() -> Result<()> {
+    // Try to find claude in PATH using which/where
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
+
+    // Use zsh with nvm sourced to check for claude
+    let shell_cmd = "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; which claude";
+
+    let output = Command::new("/bin/zsh")
+        .args(["-c", shell_cmd])
+        .env("HOME", &home)
+        .output();
+
+    match output {
+        Ok(result) => {
+            if result.status.success() {
+                let path = String::from_utf8_lossy(&result.stdout);
+                info!("Found Claude CLI at: {}", path.trim());
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!(
+                    "Claude Code CLI not found. Please install it first:\n\
+                    npm install -g @anthropic-ai/claude-code\n\n\
+                    Or visit: https://docs.anthropic.com/en/docs/claude-code"
+                ))
+            }
+        }
+        Err(e) => {
+            Err(anyhow::anyhow!(
+                "Failed to check for Claude Code CLI: {}. Please ensure it's installed.", e
+            ))
+        }
+    }
+}
+
+/// Validate that a path is a valid git repository
+pub fn validate_git_repository(project_path: &str) -> Result<()> {
+    let git_dir = std::path::Path::new(project_path).join(".git");
+    if !git_dir.exists() {
+        return Err(anyhow::anyhow!(
+            "Not a git repository: {}\n\n\
+            Please initialize git first:\n\
+            cd {} && git init",
+            project_path,
+            project_path
+        ));
+    }
+    Ok(())
+}
+
 /// Status of a task agent
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TaskAgentStatus {
@@ -144,6 +194,13 @@ impl TaskAgentManager {
     ) -> Result<TaskAgentInfo> {
         info!("Starting interactive agent for task {} in {}", task_id, project_path);
 
+        // Pre-flight checks
+        // 1. Check if Claude CLI is installed
+        check_claude_cli_installed()?;
+
+        // 2. Validate git repository
+        validate_git_repository(project_path)?;
+
         // Create branch name from task ID
         let branch_name = format!("medusa/task-{}", &task_id[..8]);
 
@@ -152,6 +209,38 @@ impl TaskAgentManager {
         let worktree_path = git.create_worktree(task_id, &branch_name)?;
 
         info!("Created worktree at {:?} on branch {}", worktree_path, branch_name);
+
+        // Wrap the rest in a closure so we can cleanup worktree on failure
+        let result = self.spawn_agent_process(
+            task_id,
+            project_path,
+            &worktree_path.to_string_lossy(),
+            &branch_name,
+            initial_prompt,
+            app_handle,
+        );
+
+        // If spawn failed, cleanup the worktree
+        if result.is_err() {
+            warn!("Agent spawn failed, cleaning up worktree for task {}", task_id);
+            if let Err(cleanup_err) = git.remove_worktree(task_id) {
+                error!("Failed to cleanup worktree after spawn failure: {}", cleanup_err);
+            }
+        }
+
+        result
+    }
+
+    /// Internal method to spawn the agent process (separated for cleanup handling)
+    fn spawn_agent_process(
+        &self,
+        task_id: &str,
+        _project_path: &str,
+        worktree_path: &str,
+        branch_name: &str,
+        initial_prompt: &str,
+        app_handle: AppHandle,
+    ) -> Result<TaskAgentInfo> {
 
         // Check if we have an existing session to resume
         let existing_session_id = load_session_id(task_id);
@@ -202,8 +291,8 @@ impl TaskAgentManager {
             task_id: task_id.to_string(),
             pid,
             status: TaskAgentStatus::Running,
-            worktree_path: worktree_path.to_string_lossy().to_string(),
-            branch: branch_name,
+            worktree_path: worktree_path.to_string(),
+            branch: branch_name.to_string(),
             started_at: chrono::Utc::now().timestamp(),
             output_lines: Vec::new(),
         };
