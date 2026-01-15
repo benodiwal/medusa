@@ -31,17 +31,17 @@ export function TaskCard({
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case TaskStatus.Backlog:
-        return 'bg-gray-500/10 text-gray-500';
+        return 'bg-muted text-muted-foreground';
       case TaskStatus.Planning:
-        return 'bg-blue-500/10 text-blue-500';
+        return 'bg-primary/10 text-primary';
       case TaskStatus.InProgress:
-        return 'bg-amber-500/10 text-amber-500';
+        return 'bg-primary/10 text-primary';
       case TaskStatus.Review:
-        return 'bg-purple-500/10 text-purple-500';
+        return 'bg-primary/10 text-primary';
       case TaskStatus.Done:
-        return 'bg-green-500/10 text-green-500';
+        return 'bg-muted text-muted-foreground';
       default:
-        return 'bg-gray-500/10 text-gray-500';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -65,8 +65,8 @@ export function TaskCard({
           {task.status}
         </span>
         {isRunning && (
-          <span className="flex items-center gap-1 text-xs text-amber-500">
-            <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
             Running
           </span>
         )}
@@ -113,7 +113,7 @@ export function TaskCard({
                 e.stopPropagation();
                 onStartAgent();
               }}
-              className="p-1.5 text-muted-foreground hover:text-green-500 hover:bg-green-500/10 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
               title="Start Agent"
             >
               <Play className="w-3.5 h-3.5" />
@@ -141,7 +141,7 @@ export function TaskCard({
                 e.stopPropagation();
                 onViewOutput();
               }}
-              className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
               title="View Output"
             >
               <Terminal className="w-3.5 h-3.5" />
@@ -155,7 +155,7 @@ export function TaskCard({
                 e.stopPropagation();
                 onOpen();
               }}
-              className="p-1.5 text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
               title="View Changes"
             >
               <Eye className="w-3.5 h-3.5" />
@@ -190,7 +190,7 @@ export function TaskCard({
         <div className="mt-3 pt-3 border-t border-border">
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full animate-pulse w-1/2" />
+              <div className="h-full bg-primary rounded-full animate-pulse w-1/2" />
             </div>
             <span className="text-xs text-muted-foreground">Working...</span>
           </div>

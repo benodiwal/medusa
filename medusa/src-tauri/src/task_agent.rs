@@ -7,12 +7,73 @@ use crate::git::GitManager;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info, warn};
+
+/// Get the directory for storing session files
+fn get_sessions_dir() -> PathBuf {
+    let sessions_dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".medusa")
+        .join("sessions");
+    fs::create_dir_all(&sessions_dir).ok();
+    sessions_dir
+}
+
+/// Get the session file path for a task
+fn get_session_file(task_id: &str) -> PathBuf {
+    get_sessions_dir().join(format!("{}.jsonl", task_id))
+}
+
+/// Append a line to the session file
+fn append_to_session_file(task_id: &str, line: &str) {
+    let file_path = get_session_file(task_id);
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file_path)
+    {
+        let _ = writeln!(file, "{}", line);
+    }
+}
+
+/// Load session from file
+fn load_session_file(task_id: &str) -> Vec<String> {
+    let file_path = get_session_file(task_id);
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(&file_path) {
+            return content.lines().map(|s| s.to_string()).collect();
+        }
+    }
+    Vec::new()
+}
+
+/// Get the session_id file path for a task
+fn get_session_id_file(task_id: &str) -> PathBuf {
+    get_sessions_dir().join(format!("{}.session_id", task_id))
+}
+
+/// Save session_id to file
+fn save_session_id(task_id: &str, session_id: &str) {
+    let file_path = get_session_id_file(task_id);
+    let _ = fs::write(&file_path, session_id);
+}
+
+/// Load session_id from file
+fn load_session_id(task_id: &str) -> Option<String> {
+    let file_path = get_session_id_file(task_id);
+    if file_path.exists() {
+        fs::read_to_string(&file_path).ok().map(|s| s.trim().to_string())
+    } else {
+        None
+    }
+}
 
 /// Status of a task agent
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -92,18 +153,81 @@ impl TaskAgentManager {
 
         info!("Created worktree at {:?} on branch {}", worktree_path, branch_name);
 
+        // Check if we have an existing session to resume
+        let existing_session_id = load_session_id(task_id);
+
+        // Find claude binary
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
+
+        let mut claude_path: Option<PathBuf> = None;
+
+        // Check common locations
+        let search_paths = vec![
+            format!("{}/.local/bin/claude", home),
+            format!("{}/.claude/local/bin/claude", home),
+            "/usr/local/bin/claude".to_string(),
+            "/opt/homebrew/bin/claude".to_string(),
+        ];
+
+        for path in &search_paths {
+            let p = PathBuf::from(path);
+            if p.exists() {
+                claude_path = Some(p);
+                break;
+            }
+        }
+
+        // Check nvm paths
+        if claude_path.is_none() {
+            let nvm_dir = format!("{}/.nvm/versions/node", home);
+            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+                for entry in entries.flatten() {
+                    let bin_path = entry.path().join("bin").join("claude");
+                    if bin_path.exists() {
+                        claude_path = Some(bin_path);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let claude_binary = claude_path.unwrap_or_else(|| PathBuf::from("claude"));
+        info!("Using claude binary: {:?}", claude_binary);
+
         // Build the Claude command for interactive mode
-        let mut cmd = Command::new("claude");
-        cmd.args([
-            "--verbose",
-            "--output-format", "stream-json",
-            "--input-format", "stream-json",
-            "--dangerously-skip-permissions",
-        ])
-        .current_dir(&worktree_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        let mut cmd = Command::new(&claude_binary);
+
+        if let Some(ref session_id) = existing_session_id {
+            info!("Resuming session {} for task {}", session_id, task_id);
+            cmd.args([
+                "--resume", session_id,
+                "--verbose",
+                "--output-format", "stream-json",
+                "--input-format", "stream-json",
+                "--dangerously-skip-permissions",
+            ]);
+        } else {
+            cmd.args([
+                "--verbose",
+                "--output-format", "stream-json",
+                "--input-format", "stream-json",
+                "--dangerously-skip-permissions",
+            ]);
+        }
+
+        // Build PATH for the child process (claude may need node, etc.)
+        let path = std::env::var("PATH").unwrap_or_default();
+        let nvm_bin = claude_binary.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let extended_path = format!(
+            "{}:{}/.local/bin:/usr/local/bin:/opt/homebrew/bin:{}",
+            nvm_bin, home, path
+        );
+
+        cmd.env("PATH", &extended_path)
+            .current_dir(&worktree_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
         // Spawn the process
         let mut child = cmd.spawn().map_err(|e| {
@@ -148,7 +272,23 @@ impl TaskAgentManager {
                         Ok(line) => {
                             debug!("Agent {} stdout: {}", task_id_clone, line);
 
-                            // Store output line
+                            // Try to extract session_id from init message
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                                if json.get("type").and_then(|t| t.as_str()) == Some("system")
+                                    && json.get("subtype").and_then(|t| t.as_str()) == Some("init")
+                                {
+                                    if let Some(session_id) = json.get("session_id").and_then(|s| s.as_str()) {
+                                        info!("Captured session_id for task {}: {}", task_id_clone, session_id);
+                                        // Save session_id to file for persistence
+                                        save_session_id(&task_id_clone, session_id);
+                                    }
+                                }
+                            }
+
+                            // Persist to session file
+                            append_to_session_file(&task_id_clone, &line);
+
+                            // Store output line in memory
                             if let Ok(mut agents) = agents_clone.lock() {
                                 if let Some(agent) = agents.get_mut(&task_id_clone) {
                                     agent.info.output_lines.push(line.clone());
@@ -254,8 +394,8 @@ impl TaskAgentManager {
             });
         }
 
-        // Send initial prompt
-        if !initial_prompt.is_empty() {
+        // Send initial prompt only if this is a new session (not resuming)
+        if existing_session_id.is_none() && !initial_prompt.is_empty() {
             self.send_message(task_id, initial_prompt)?;
         }
 
@@ -277,6 +417,9 @@ impl TaskAgentManager {
                     "content": message
                 }
             });
+
+            // Persist user message to session file
+            append_to_session_file(task_id, &json_message.to_string());
 
             writeln!(stdin, "{}", json_message.to_string())?;
             stdin.flush()?;
@@ -370,10 +513,24 @@ impl TaskAgentManager {
         Ok(())
     }
 
-    /// Get agent output
+    /// Get agent output - loads from file if not in memory
     pub fn get_agent_output(&self, task_id: &str) -> Option<Vec<String>> {
-        let agents = self.agents.lock().ok()?;
-        agents.get(task_id).map(|a| a.info.output_lines.clone())
+        // First try to get from memory (active session)
+        if let Ok(agents) = self.agents.lock() {
+            if let Some(agent) = agents.get(task_id) {
+                if !agent.info.output_lines.is_empty() {
+                    return Some(agent.info.output_lines.clone());
+                }
+            }
+        }
+
+        // Fall back to loading from session file
+        let lines = load_session_file(task_id);
+        if !lines.is_empty() {
+            Some(lines)
+        } else {
+            None
+        }
     }
 }
 

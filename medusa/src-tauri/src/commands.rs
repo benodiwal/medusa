@@ -1227,14 +1227,8 @@ pub async fn start_task_agent(
     let task = get_task(task_id.clone()).await?
         .ok_or_else(|| format!("Task not found: {}", task_id))?;
 
-    // Build prompt from task info if not provided
-    let prompt = prompt.unwrap_or_else(|| {
-        format!(
-            "Task: {}\n\nDescription: {}\n\nPlease complete this task.",
-            task.title,
-            task.description
-        )
-    });
+    // Use provided prompt or task description (just the description, not formatted)
+    let prompt = prompt.unwrap_or_else(|| task.description.clone());
 
     // Start the agent
     let manager = TASK_AGENT_MANAGER.lock()

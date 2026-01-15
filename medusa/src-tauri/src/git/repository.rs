@@ -132,6 +132,11 @@ impl GitManager {
 
         let worktree_path = worktrees_dir.join(task_id);
 
+        // If worktree already exists, just return the path
+        if worktree_path.exists() {
+            return Ok(worktree_path);
+        }
+
         // Create the worktree with a new branch
         let output = Command::new("git")
             .args(["worktree", "add", "-b", branch_name, worktree_path.to_str().unwrap()])

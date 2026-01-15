@@ -81,6 +81,20 @@ function parseClaudeLine(line: string): ParsedMessage | null {
   try {
     const data = JSON.parse(line);
 
+    // Parse user messages (from saved session file)
+    if (data.type === 'user' && data.message?.content) {
+      const content = typeof data.message.content === 'string'
+        ? data.message.content
+        : extractTextContent(data.message.content);
+      if (content && content.trim()) {
+        return {
+          type: 'user',
+          content: content,
+          timestamp: new Date(),
+        };
+      }
+    }
+
     // Show assistant text messages
     if (data.type === 'assistant' && data.message?.content) {
       const content = data.message.content;
@@ -182,25 +196,13 @@ export default function TaskDetail() {
     const loadOutput = async () => {
       if (!id) return;
       try {
-        // Get task to show initial prompt
-        const t = await invoke<Task | null>('get_task', { id });
-
         const lines = await invoke<string[]>('get_task_agent_output', { taskId: id });
 
         // Mark all loaded lines as processed to avoid duplicates from events
         lines.forEach(line => processedLinesRef.current.add(line));
 
         const parsed = lines.map(parseClaudeLine).filter((m): m is ParsedMessage => m !== null);
-
-        // Add task description as first user message if we have output
-        if (t && t.description && (parsed.length > 0 || t.agent_pid)) {
-          setMessages([
-            { type: 'user', content: t.description, timestamp: new Date(t.created_at * 1000) },
-            ...parsed
-          ]);
-        } else {
-          setMessages(parsed);
-        }
+        setMessages(parsed);
 
         // Auto-scroll to bottom after loading
         setTimeout(() => {
@@ -266,11 +268,6 @@ export default function TaskDetail() {
   const handleStartAgent = async () => {
     if (!task) return;
     try {
-      // Add description as initial user message before starting
-      if (task.description) {
-        setMessages([{ type: 'user', content: task.description, timestamp: new Date() }]);
-      }
-
       setThinking(true);
       await invoke('start_task_agent', { taskId: task.id });
       loadTask();
@@ -406,8 +403,8 @@ export default function TaskDetail() {
           <div className="flex items-center gap-2">
             {isRunning ? (
               <>
-                <span className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
-                  <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
                   Running
                 </span>
                 <button

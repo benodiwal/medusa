@@ -7,11 +7,11 @@ import { Task, TaskStatus } from '../types';
 import { TaskCard, CreateTaskModal, AgentOutputModal } from '../components/tasks';
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: TaskStatus.Backlog, label: 'Backlog', color: 'text-gray-500' },
-  { status: TaskStatus.Planning, label: 'Planning', color: 'text-blue-500' },
-  { status: TaskStatus.InProgress, label: 'In Progress', color: 'text-amber-500' },
-  { status: TaskStatus.Review, label: 'Review', color: 'text-purple-500' },
-  { status: TaskStatus.Done, label: 'Done', color: 'text-green-500' },
+  { status: TaskStatus.Backlog, label: 'Backlog', color: 'text-muted-foreground' },
+  { status: TaskStatus.Planning, label: 'Planning', color: 'text-primary' },
+  { status: TaskStatus.InProgress, label: 'In Progress', color: 'text-primary' },
+  { status: TaskStatus.Review, label: 'Review', color: 'text-primary' },
+  { status: TaskStatus.Done, label: 'Done', color: 'text-muted-foreground' },
 ];
 
 interface AgentStatusEvent {
@@ -187,8 +187,8 @@ export default function Tasks() {
               {tasks.length} tasks
             </span>
             {runningAgents > 0 && (
-              <span className="flex items-center gap-1.5 text-xs text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
                 {runningAgents} agent{runningAgents !== 1 ? 's' : ''} running
               </span>
             )}
