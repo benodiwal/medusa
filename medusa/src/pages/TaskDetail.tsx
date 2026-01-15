@@ -27,6 +27,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { Task, TaskStatus, TaskCommit } from '../types';
+import { MarkdownRenderer } from '../components/chat/MarkdownRenderer';
 
 interface AgentOutputEvent {
   task_id: string;
@@ -767,13 +768,17 @@ export default function TaskDetail() {
                           : 'bg-card border border-border'
                       }`}
                     >
-                      <div
-                        className={`text-sm whitespace-pre-wrap break-words ${
-                          msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' : ''
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
+                      {msg.type === 'assistant' ? (
+                        <MarkdownRenderer content={msg.content} className="text-sm" />
+                      ) : (
+                        <div
+                          className={`text-sm whitespace-pre-wrap break-words ${
+                            msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' : ''
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      )}
                     </div>
                     {msg.type === 'user' && (
                       <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
