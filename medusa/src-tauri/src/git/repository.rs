@@ -163,6 +163,31 @@ impl GitManager {
         PathBuf::from(&self.repo_path).join(".medusa-worktrees")
     }
 
+    /// Check if a worktree is healthy (not orphaned/corrupted)
+    fn is_worktree_healthy(&self, worktree_path: &PathBuf) -> Result<bool> {
+        // Check 1: Directory exists
+        if !worktree_path.exists() {
+            return Ok(false);
+        }
+
+        // Check 2: Has .git file (worktrees have a .git file, not directory)
+        let git_file = worktree_path.join(".git");
+        if !git_file.exists() {
+            return Ok(false);
+        }
+
+        // Check 3: Can run git status in the worktree
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(worktree_path)
+            .output();
+
+        match output {
+            Ok(result) => Ok(result.status.success()),
+            Err(_) => Ok(false),
+        }
+    }
+
     /// Create a new worktree for a task
     /// Returns the path to the created worktree
     pub fn create_worktree(&self, task_id: &str, branch_name: &str) -> Result<PathBuf> {
@@ -188,9 +213,19 @@ impl GitManager {
 
         let worktree_path = worktrees_dir.join(task_id);
 
-        // If worktree already exists, just return the path
+        // If worktree already exists, verify it's healthy
         if worktree_path.exists() {
-            return Ok(worktree_path);
+            if self.is_worktree_healthy(&worktree_path)? {
+                return Ok(worktree_path);
+            } else {
+                // Worktree is corrupted/orphaned, remove and recreate
+                tracing::warn!("Worktree at {:?} is unhealthy, removing and recreating", worktree_path);
+                let _ = self.remove_worktree(task_id);
+                // Also try to remove directory if it still exists
+                if worktree_path.exists() {
+                    let _ = std::fs::remove_dir_all(&worktree_path);
+                }
+            }
         }
 
         // Create the worktree with a new branch

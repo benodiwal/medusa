@@ -45,7 +45,7 @@ export default function Tasks() {
     loadTasks();
 
     // Poll for task updates (agent status changes, etc.)
-    const interval = setInterval(loadTasks, 3000);
+    const interval = setInterval(loadTasks, 3000); // Standardized polling interval
     return () => clearInterval(interval);
   }, [loadTasks]);
 

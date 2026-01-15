@@ -243,7 +243,11 @@ export default function TaskDetail() {
   useEffect(() => {
     if (!id) return;
 
-    const unlisten = listen<AgentOutputEvent>('agent-output', (event) => {
+    let isMounted = true;
+    let unlistenFn: (() => void) | null = null;
+
+    listen<AgentOutputEvent>('agent-output', (event) => {
+      if (!isMounted) return;
       if (event.payload.task_id === id) {
         // Skip if we've already processed this line
         if (processedLinesRef.current.has(event.payload.line)) {
@@ -253,14 +257,18 @@ export default function TaskDetail() {
 
         const parsed = parseClaudeLine(event.payload.line);
         if (parsed) {
-          // Only stop thinking when we get an actual displayable message
-                    setMessages((prev) => [...prev, parsed]);
+          setMessages((prev) => [...prev, parsed]);
         }
       }
+    }).then((fn) => {
+      unlistenFn = fn;
+      // If component unmounted while we were setting up, cleanup immediately
+      if (!isMounted) fn();
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      isMounted = false;
+      if (unlistenFn) unlistenFn();
     };
   }, [id]);
 
@@ -268,12 +276,20 @@ export default function TaskDetail() {
   useEffect(() => {
     if (!id) return;
 
-    const unlisten = listen('agent-status', () => {
+    let isMounted = true;
+    let unlistenFn: (() => void) | null = null;
+
+    listen('agent-status', () => {
+      if (!isMounted) return;
       loadTask();
+    }).then((fn) => {
+      unlistenFn = fn;
+      if (!isMounted) fn();
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      isMounted = false;
+      if (unlistenFn) unlistenFn();
     };
   }, [id, loadTask]);
 
@@ -284,7 +300,7 @@ export default function TaskDetail() {
 
   // Poll for task updates
   useEffect(() => {
-    const interval = setInterval(loadTask, 5000);
+    const interval = setInterval(loadTask, 3000); // Standardized polling interval
     return () => clearInterval(interval);
   }, [loadTask]);
 

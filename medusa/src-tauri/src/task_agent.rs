@@ -337,10 +337,19 @@ impl TaskAgentManager {
                             // Persist to session file
                             append_to_session_file(&task_id_clone, &line);
 
-                            // Store output line in memory
+                            // Store output line in memory (with limit to prevent memory leak)
+                            const MAX_OUTPUT_LINES: usize = 10000;
+                            const TRIM_AMOUNT: usize = 2000;
+
                             if let Ok(mut agents) = agents_clone.lock() {
                                 if let Some(agent) = agents.get_mut(&task_id_clone) {
                                     agent.info.output_lines.push(line.clone());
+
+                                    // Trim old lines if we exceed the limit
+                                    if agent.info.output_lines.len() > MAX_OUTPUT_LINES {
+                                        agent.info.output_lines.drain(0..TRIM_AMOUNT);
+                                        debug!("Trimmed {} old output lines for task {}", TRIM_AMOUNT, task_id_clone);
+                                    }
                                 }
                             }
 

@@ -116,17 +116,26 @@ export default function UnifiedKanban() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 2000);
+    const interval = setInterval(loadData, 3000); // Standardized polling interval
     return () => clearInterval(interval);
   }, [loadData]);
 
   // Listen for agent status changes
   useEffect(() => {
-    const unlisten = listen<AgentStatusEvent>('agent-status', () => {
+    let isMounted = true;
+    let unlistenFn: (() => void) | null = null;
+
+    listen<AgentStatusEvent>('agent-status', () => {
+      if (!isMounted) return;
       loadData();
+    }).then((fn) => {
+      unlistenFn = fn;
+      if (!isMounted) fn();
     });
+
     return () => {
-      unlisten.then((fn) => fn());
+      isMounted = false;
+      if (unlistenFn) unlistenFn();
     };
   }, [loadData]);
 
