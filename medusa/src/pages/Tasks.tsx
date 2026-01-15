@@ -28,6 +28,7 @@ export default function Tasks() {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [outputTask, setOutputTask] = useState<Task | null>(null);
+  const [committingTaskId, setCommittingTaskId] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -125,12 +126,16 @@ export default function Tasks() {
           return;
         }
       }
+      // Show committing state while Claude Code generates commit message
+      setCommittingTaskId(task.id);
       // This will auto-commit using Claude Code if there are uncommitted changes
       await invoke('send_task_to_review', { taskId: task.id });
       loadTasks();
     } catch (error) {
       console.error('Failed to send to review:', error);
       alert(`Failed to send to review: ${error}`);
+    } finally {
+      setCommittingTaskId(null);
     }
   };
 
@@ -307,6 +312,7 @@ export default function Tasks() {
                       onSendToReview={() => handleSendToReview(task)}
                       onViewOutput={() => setOutputTask(task)}
                       isDragging={draggedTask?.id === task.id}
+                      isCommitting={committingTaskId === task.id}
                     />
                   </div>
                 ))}

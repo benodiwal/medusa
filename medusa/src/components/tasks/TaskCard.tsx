@@ -1,4 +1,4 @@
-import { Clock, Play, Trash2, GitBranch, FolderOpen, Terminal, Eye, Pause, Send } from 'lucide-react';
+import { Clock, Play, Trash2, GitBranch, FolderOpen, Terminal, Eye, Pause, Send, Loader2 } from 'lucide-react';
 import { Task, TaskStatus } from '../../types';
 
 interface TaskCardProps {
@@ -10,6 +10,7 @@ interface TaskCardProps {
   onSendToReview?: () => void;
   onViewOutput?: () => void;
   isDragging?: boolean;
+  isCommitting?: boolean;
 }
 
 export function TaskCard({
@@ -21,6 +22,7 @@ export function TaskCard({
   onSendToReview,
   onViewOutput,
   isDragging,
+  isCommitting,
 }: TaskCardProps) {
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor(Date.now() / 1000 - timestamp);
@@ -233,8 +235,18 @@ export function TaskCard({
         </div>
       )}
 
+      {/* Committing indicator */}
+      {isCommitting && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Committing changes...
+          </div>
+        </div>
+      )}
+
       {/* Send to Review button - shown for any InProgress task that's not running */}
-      {isInProgressNotRunning && onSendToReview && (
+      {!isCommitting && isInProgressNotRunning && onSendToReview && (
         <div className="mt-3 pt-3 border-t border-border">
           <button
             onClick={(e) => {

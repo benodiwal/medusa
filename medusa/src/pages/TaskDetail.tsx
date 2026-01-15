@@ -153,6 +153,7 @@ export default function TaskDetail() {
   const [commits, setCommits] = useState<TaskCommit[]>([]);
   const [editingCommit, setEditingCommit] = useState<string | null>(null);
   const [editedMessage, setEditedMessage] = useState('');
+  const [committing, setCommitting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -308,12 +309,15 @@ export default function TaskDetail() {
   const handleSendToReview = async () => {
     if (!task) return;
     try {
+      setCommitting(true);
       // This will auto-commit using Claude Code if there are uncommitted changes
       await invoke('send_task_to_review', { taskId: task.id });
       loadTask();
     } catch (error) {
       console.error('Failed to send to review:', error);
       alert(`Failed to send to review: ${error}`);
+    } finally {
+      setCommitting(false);
     }
   };
 
@@ -542,13 +546,20 @@ export default function TaskDetail() {
                   Resume
                 </button>
                 {changedFiles.length > 0 && (
-                  <button
-                    onClick={handleSendToReview}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <SendHorizonal className="w-4 h-4" />
-                    Send to Review
-                  </button>
+                  committing ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Committing changes...
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSendToReview}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                    >
+                      <SendHorizonal className="w-4 h-4" />
+                      Send to Review
+                    </button>
+                  )
                 )}
               </>
             ) : (
