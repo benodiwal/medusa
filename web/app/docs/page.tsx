@@ -48,8 +48,8 @@ export default function Docs() {
               Get started with Medusa
             </h1>
             <p className="text-base sm:text-lg leading-relaxed" style={{color: '#6B5B47', opacity: 0.85}}>
-              Set up human oversight for Claude Code in under 5 minutes. This guide covers installation,
-              hook configuration, and everything you need to start reviewing AI plans.
+              Your control center for AI-powered development. Review Claude&apos;s plans before they execute,
+              or run autonomous agents on isolated branches. This guide covers both workflows.
             </p>
           </div>
 
@@ -61,11 +61,12 @@ export default function Docs() {
             <ul className="space-y-2">
               {[
                 { href: "#installation", label: "Installation" },
-                { href: "#hook-setup", label: "Setting up the Claude Code hook" },
+                { href: "#tasks", label: "Using Tasks (Quick Start)" },
+                { href: "#hook-setup", label: "Setting up Plans (Hook)" },
                 { href: "#first-review", label: "Your first plan review" },
                 { href: "#annotations", label: "Using annotations" },
-                { href: "#kanban", label: "Managing multiple plans" },
-                { href: "#diffs", label: "Viewing revision diffs" },
+                { href: "#kanban", label: "The unified board" },
+                { href: "#diffs", label: "Viewing diffs" },
                 { href: "#obsidian", label: "Exporting to Obsidian" },
                 { href: "#sharing", label: "Sharing plans" },
                 { href: "#settings", label: "Configuration" },
@@ -128,11 +129,129 @@ export default function Docs() {
           {/* Divider */}
           <div className="w-full h-px mb-12 sm:mb-16" style={{backgroundColor: '#D2691E', opacity: 0.2}}></div>
 
+          {/* Section: Tasks */}
+          <section id="tasks" className="mb-12 sm:mb-16 scroll-mt-24">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>02</span>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Using Tasks (Quick Start)</h2>
+            </div>
+
+            <div className="prose prose-lg max-w-none">
+              <p className="text-base sm:text-lg leading-relaxed mb-6" style={{color: '#6B5B47'}}>
+                Tasks let you run Claude Code agents autonomously on isolated git branches. No hook setup
+                required—just create a task and start the agent.
+              </p>
+
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#F0FFF4', borderColor: '#22C55E'}}>
+                <h4 className="font-bold mb-2" style={{color: '#166534'}}>No setup needed</h4>
+                <p className="text-sm sm:text-base" style={{color: '#166534', opacity: 0.9}}>
+                  Unlike Plans which require hook configuration, Tasks work out of the box.
+                  Just open Medusa and create your first task.
+                </p>
+              </div>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Creating a task</h3>
+
+              <div className="space-y-4 mb-6">
+                {[
+                  {
+                    step: "1",
+                    title: "Click New Task",
+                    description: "From the main board, click the \"New Task\" button in the top right."
+                  },
+                  {
+                    step: "2",
+                    title: "Enter details",
+                    description: "Give your task a title (what you want done), an optional description, and select your project folder."
+                  },
+                  {
+                    step: "3",
+                    title: "Start the agent",
+                    description: "Click the play button on the task card. Medusa creates an isolated git branch and starts Claude Code."
+                  }
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-4 p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold" style={{backgroundColor: '#D2691E', color: 'white'}}>
+                      {item.step}
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1" style={{color: '#6B5B47'}}>{item.title}</h4>
+                      <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>How it works</h3>
+              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
+                When you start an agent, Medusa:
+              </p>
+
+              <ul className="space-y-2 mb-6 list-disc list-inside" style={{color: '#6B5B47'}}>
+                <li>Creates a git worktree (isolated branch) in your project</li>
+                <li>Spawns a Claude Code instance in that worktree</li>
+                <li>Streams output so you can monitor progress</li>
+                <li>Keeps the branch isolated from your main code</li>
+              </ul>
+
+              <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
+                <Image
+                  src="/agent-output.png"
+                  alt="Agent running with live output"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Reviewing and merging</h3>
+              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
+                When the agent finishes (or you pause it), click &quot;Send to Review&quot;. Claude Code will
+                commit the changes with a descriptive message, and you can:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Review diffs</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    See exactly what files changed, line by line.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Edit commits</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Update the commit message if needed.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Merge</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    One click to merge the branch into main.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Discard</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Delete the task and worktree if you don&apos;t want the changes.
+                  </p>
+                </div>
+              </div>
+
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Running multiple agents</h3>
+              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
+                You can run multiple tasks in parallel. Each gets its own git worktree, so they
+                won&apos;t conflict with each other. Great for working on multiple features simultaneously.
+              </p>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="w-full h-px mb-12 sm:mb-16" style={{backgroundColor: '#D2691E', opacity: 0.2}}></div>
+
           {/* Section: Hook Setup */}
           <section id="hook-setup" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>02</span>
-              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Setting up the Claude Code hook</h2>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>03</span>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Setting up Plans (Hook)</h2>
             </div>
 
             <div className="prose prose-lg max-w-none">
@@ -300,7 +419,7 @@ done`}</pre>
           {/* Section: First Review */}
           <section id="first-review" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>03</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>04</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Your first plan review</h2>
             </div>
 
@@ -377,7 +496,7 @@ done`}</pre>
           {/* Section: Annotations */}
           <section id="annotations" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>04</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>05</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Using annotations</h2>
             </div>
 
@@ -452,21 +571,22 @@ done`}</pre>
           {/* Section: Kanban */}
           <section id="kanban" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>05</span>
-              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Managing multiple plans</h2>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>06</span>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>The unified board</h2>
             </div>
 
             <div className="prose prose-lg max-w-none">
               <p className="text-base sm:text-lg leading-relaxed mb-6" style={{color: '#6B5B47'}}>
-                Running Claude Code in multiple terminals? Medusa&apos;s kanban board tracks every plan
-                across all sessions in one place.
+                Plans and tasks live together in one unified kanban board. See what&apos;s pending,
+                what agents are running, and what&apos;s ready for review—all at a glance.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
                 {[
-                  { name: "Pending", color: "#6B7280", description: "Plans waiting for your review" },
-                  { name: "In Review", color: "#D2691E", description: "Plans you're currently reviewing" },
-                  { name: "Approved", color: "#22C55E", description: "Plans that have been approved" }
+                  { name: "Backlog", color: "#6B7280", description: "Tasks waiting to start" },
+                  { name: "In Progress", color: "#D2691E", description: "Running agents & plans being revised" },
+                  { name: "Review", color: "#D2691E", description: "Ready for your review" },
+                  { name: "Done", color: "#22C55E", description: "Completed & approved" }
                 ].map((column) => (
                   <div key={column.name} className="p-4 rounded-xl text-center" style={{backgroundColor: '#F3F1E8'}}>
                     <div className="w-3 h-3 rounded-full mx-auto mb-2" style={{backgroundColor: column.color}}></div>
@@ -498,8 +618,8 @@ done`}</pre>
           {/* Section: Diffs */}
           <section id="diffs" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>06</span>
-              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Viewing revision diffs</h2>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>07</span>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Viewing diffs</h2>
             </div>
 
             <div className="prose prose-lg max-w-none">
@@ -533,7 +653,7 @@ done`}</pre>
           {/* Section: Obsidian */}
           <section id="obsidian" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>07</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>08</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Exporting to Obsidian</h2>
             </div>
 
@@ -584,7 +704,7 @@ done`}</pre>
           {/* Section: Sharing */}
           <section id="sharing" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>08</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>09</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Sharing plans</h2>
             </div>
 
@@ -663,7 +783,7 @@ done`}</pre>
           {/* Section: Settings */}
           <section id="settings" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>09</span>
+              <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>10</span>
               <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Configuration</h2>
             </div>
 

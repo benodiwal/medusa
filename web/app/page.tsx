@@ -33,10 +33,10 @@ export default function Home() {
                 FOR CLAUDE CODE USERS
               </p>
               <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight mb-4 sm:mb-6" style={{color: '#6B5B47'}}>
-                The checkpoint between Claude and your codebase
+                Your control center for AI-powered development
               </h1>
               <p className="text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 leading-relaxed" style={{color: '#6B5B47'}}>
-                Claude Code plans complex changes to your project. Medusa shows you exactly <br className="hidden sm:block"/> what&apos;s about to happen—review, annotate, approve—before a single line executes.
+                Review Claude&apos;s plans before they execute. Run parallel agents on isolated branches. <br className="hidden sm:block"/> Approve code changes before they hit your codebase.
               </p>
 
               {/* Download Button */}

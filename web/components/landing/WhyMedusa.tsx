@@ -19,44 +19,82 @@ const WhyMedusa = () => {
               FEATURES
             </p>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight" style={{color: '#6B5B47'}}>
-              Review with precision
+              Two workflows, one board
             </h2>
           </div>
 
           {/* Right - Description */}
           <div className="flex flex-col justify-center">
             <p className="text-base sm:text-lg leading-relaxed" style={{color: '#6B5B47'}}>
-              Claude Code can rewrite your entire codebase in minutes. Medusa makes sure
-              that&apos;s actually what you want—with tools designed for careful review.
+              Review AI plans before they execute. Run autonomous agents on isolated branches.
+              Medusa gives you control over both—in a single unified interface.
             </p>
           </div>
         </div>
 
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
+        {/* Feature Cards - 6 items in 2x3 grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
 
-          {/* Kanban workflow */}
+          {/* Unified Workflow */}
           <div className="space-y-2 sm:space-y-3">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
                 src="/kanban.png"
-                alt="Kanban board"
+                alt="Unified kanban board"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Multi-session tracking
+              Unified workflow
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
-              Running Claude in multiple terminals? One board tracks every plan across all sessions.
-              See what&apos;s pending, what you&apos;re reviewing, and what&apos;s approved.
+              Plans and tasks in one kanban board. See what&apos;s pending review, what agents are running,
+              and what&apos;s ready to merge—all at a glance.
+            </p>
+          </div>
+
+          {/* Parallel Agents */}
+          <div className="space-y-2 sm:space-y-3">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+              <Image
+                src="/agent-output.png"
+                alt="Agent output and chat"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
+              Parallel agents
+            </h3>
+            <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
+              Run multiple Claude Code instances simultaneously. Each task gets its own git worktree—
+              isolated branches that won&apos;t conflict with each other.
+            </p>
+          </div>
+
+          {/* Code Review */}
+          <div className="space-y-2 sm:space-y-3">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+              <Image
+                src="/diff.png"
+                alt="Code diff review"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
+              Code review
+            </h3>
+            <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
+              See exactly what the agent changed before merging. File-by-file diffs, commit history,
+              and one-click merge when you&apos;re ready.
             </p>
           </div>
 
           {/* Inline annotations */}
           <div className="space-y-2 sm:space-y-3">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
                 src="/annotations.png"
                 alt="Inline annotations"
@@ -65,7 +103,7 @@ const WhyMedusa = () => {
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Inline annotations
+              Rich annotations
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
               Select any text to comment, delete, or suggest a replacement. Your feedback goes
@@ -73,18 +111,18 @@ const WhyMedusa = () => {
             </p>
           </div>
 
-          {/* Diff view */}
+          {/* Revision diffs */}
           <div className="space-y-2 sm:space-y-3">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
-                src="/diff.png"
-                alt="Diff view"
+                src="/plan-diff.png"
+                alt="Revision diffs"
                 fill
                 className="object-contain"
               />
             </div>
             <h3 className="text-base sm:text-lg lg:text-xl font-bold" style={{color: '#6B5B47'}}>
-              Revision diffs
+              Plan revision diffs
             </h3>
             <p className="text-xs sm:text-sm lg:text-base leading-relaxed" style={{color: '#6B5B47', opacity: 0.8}}>
               Requested changes? See exactly how Claude updated the plan. Line-by-line
@@ -94,7 +132,7 @@ const WhyMedusa = () => {
 
           {/* Obsidian integration */}
           <div className="space-y-2 sm:space-y-3">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
+            <div className="relative w-full aspect-[16/10] mb-2 rounded-lg overflow-hidden bg-[#F3F1E8]">
               <Image
                 src="/obsidian.png"
                 alt="Obsidian integration"

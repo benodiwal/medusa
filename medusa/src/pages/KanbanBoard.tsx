@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Settings, RefreshCw, Search, X, Clock, Copy, Check, ExternalLink } from 'lucide-react';
+import { Settings, RefreshCw, Search, X, Clock, Copy, Check, ExternalLink, ArrowLeft } from 'lucide-react';
 import { PlanItem, PlanStatus } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
@@ -184,13 +184,25 @@ export default function KanbanBoard() {
       {/* Header */}
       <header className="border-b border-border px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src="/medusa-logo.png"
-              alt="Medusa"
-              className="w-7 h-7 object-contain"
-            />
-            <h1 className="text-base font-semibold text-foreground">Medusa</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-2">
+              <img
+                src="/medusa-logo.png"
+                alt="Medusa"
+                className="w-7 h-7 object-contain"
+              />
+              <h1 className="text-base font-semibold text-foreground">Plans</h1>
+            </div>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              {plans.length} plans
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -316,7 +328,7 @@ export default function KanbanBoard() {
                       title={copiedId === 'config' ? 'Copied!' : 'Copy'}
                     >
                       {copiedId === 'config' ? (
-                        <Check className="w-3.5 h-3.5 text-green-500" />
+                        <Check className="w-3.5 h-3.5 text-primary" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
                       )}
@@ -435,7 +447,7 @@ export default function KanbanBoard() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-medium text-foreground">Working</h2>
-                    <span className="text-xs bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                       {workingPlans.length}
                     </span>
                   </div>
@@ -444,15 +456,15 @@ export default function KanbanBoard() {
                   {workingPlans.map(plan => (
                     <div
                       key={plan.id}
-                      className="bg-card border border-amber-500/30 rounded-lg p-4 opacity-75"
+                      className="bg-card border border-primary/30 rounded-lg p-4 opacity-75"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
+                        <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
                           {plan.project_name}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <span>Claude is making changes...</span>
                       </div>
                       {plan.feedback && (
@@ -472,7 +484,7 @@ export default function KanbanBoard() {
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-medium text-foreground">Approved</h2>
                   {approvedPlans.length > 0 && (
-                    <span className="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
                       {approvedPlans.length}
                     </span>
                   )}

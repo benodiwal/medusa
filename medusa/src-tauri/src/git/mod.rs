@@ -1,2 +1,2 @@
 mod repository;
-pub use repository::GitManager;
+pub use repository::{GitManager, WorktreeInfo};
