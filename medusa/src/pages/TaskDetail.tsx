@@ -675,10 +675,10 @@ export default function TaskDetail() {
             </div>
 
             {/* Diff Content */}
-            <div className="flex-1 overflow-auto bg-card">
+            <div className="flex-1 overflow-auto bg-background">
               {selectedFile ? (
                 fileDiff ? (
-                  <pre className="p-4 text-sm font-mono text-foreground">
+                  <pre className="p-4 text-sm font-mono">
                     {fileDiff.split('\n')
                       .filter((line) => {
                         // Filter out diff header lines
@@ -690,17 +690,17 @@ export default function TaskDetail() {
                         return true;
                       })
                       .map((line, i) => {
-                      let className = 'text-foreground';
+                      let className = 'text-muted-foreground';
                       let icon = null;
 
                       if (line.startsWith('+')) {
-                        className = 'text-primary bg-primary/10';
-                        icon = <Plus className="w-3 h-3 inline mr-2 text-primary" />;
+                        className = 'text-green-500 bg-green-500/10';
+                        icon = <Plus className="w-3 h-3 inline mr-2" />;
                       } else if (line.startsWith('-')) {
-                        className = 'text-muted-foreground bg-muted';
-                        icon = <Minus className="w-3 h-3 inline mr-2 text-muted-foreground" />;
+                        className = 'text-red-500 bg-red-500/10';
+                        icon = <Minus className="w-3 h-3 inline mr-2" />;
                       } else if (line.startsWith('@@')) {
-                        className = 'text-muted-foreground';
+                        className = 'text-primary';
                       }
 
                       return (
