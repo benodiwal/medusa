@@ -1351,16 +1351,61 @@ pub async fn get_task_diff(task_id: String) -> Result<String, String> {
 /// Get changed files for a task's worktree
 #[tauri::command]
 pub async fn get_task_changed_files(task_id: String) -> Result<Vec<String>, String> {
-    use crate::git::GitManager;
+    use std::process::Command;
+    use std::collections::HashSet;
 
     let task = get_task(task_id.clone()).await?
         .ok_or_else(|| format!("Task not found: {}", task_id))?;
 
-    let git = GitManager::new(task.project_path)
-        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
 
-    git.get_worktree_changed_files(&task_id)
-        .map_err(|e| format!("Failed to get changed files: {}", e))
+    let mut files = HashSet::new();
+
+    // For Review status, show committed changes vs main
+    // For other statuses, show uncommitted changes
+    if task.status == TaskStatus::Review {
+        // Get files changed between main and current branch
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "main...HEAD"])
+            .current_dir(worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to get changed files: {}", e))?;
+
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if !line.is_empty() {
+                files.insert(line.to_string());
+            }
+        }
+    } else {
+        // Get uncommitted changes (modified tracked files)
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "HEAD"])
+            .current_dir(worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to get changed files: {}", e))?;
+
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if !line.is_empty() {
+                files.insert(line.to_string());
+            }
+        }
+
+        // Get untracked (new) files
+        let output = Command::new("git")
+            .args(["ls-files", "--others", "--exclude-standard"])
+            .current_dir(worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to get untracked files: {}", e))?;
+
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if !line.is_empty() {
+                files.insert(line.to_string());
+            }
+        }
+    }
+
+    Ok(files.into_iter().collect())
 }
 
 /// Send a message to a running agent
@@ -1394,24 +1439,28 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
     let task = get_task(task_id.clone()).await?
         .ok_or_else(|| format!("Task not found: {}", task_id))?;
 
-    let worktree_path = format!("{}/.medusa-worktrees/{}", task.project_path, task_id);
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
     let full_file_path = Path::new(&worktree_path).join(&file_path);
 
-    // First try git diff for tracked files
+    // For Review status, show diff vs main (committed changes)
+    // For other statuses, show uncommitted changes vs HEAD
+    let diff_base = if task.status == TaskStatus::Review { "main" } else { "HEAD" };
+
     let output = Command::new("git")
-        .args(["diff", "HEAD", "--", &file_path])
-        .current_dir(&worktree_path)
+        .args(["diff", diff_base, "--", &file_path])
+        .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
 
     let diff_output = String::from_utf8_lossy(&output.stdout).to_string();
 
-    // If diff is empty, check if it's a new file
-    if diff_output.trim().is_empty() && full_file_path.exists() {
+    // If diff is empty and not in Review mode, check if it's a new untracked file
+    if diff_output.trim().is_empty() && task.status != TaskStatus::Review && full_file_path.exists() {
         // Check if file is untracked
         let status_output = Command::new("git")
             .args(["ls-files", "--others", "--exclude-standard", "--", &file_path])
-            .current_dir(&worktree_path)
+            .current_dir(worktree_path)
             .output()
             .map_err(|e| format!("Failed to check file status: {}", e))?;
 
@@ -1424,7 +1473,7 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
 
             let mut diff = format!("diff --git a/{} b/{}\n", file_path, file_path);
             diff.push_str("new file mode 100644\n");
-            diff.push_str(&format!("--- /dev/null\n"));
+            diff.push_str("--- /dev/null\n");
             diff.push_str(&format!("+++ b/{}\n", file_path));
             diff.push_str("@@ -0,0 +1 @@\n");
 
@@ -1454,10 +1503,6 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
 
     let git = GitManager::new(task.project_path.clone())
         .map_err(|e| format!("Failed to open git repo: {}", e))?;
-
-    // Commit any uncommitted changes in worktree first
-    git.commit_worktree(&task_id, &format!("feat: {}", task.title))
-        .map_err(|e| format!("Failed to commit changes: {}", e))?;
 
     // Get the current branch to return to after merge
     let current_branch = git.current_branch()
@@ -1545,4 +1590,180 @@ pub async fn reject_task(task_id: String) -> Result<(), String> {
 
     info!("Task {} rejected and moved back to backlog", task_id);
     Ok(())
+}
+
+/// Commit for a task - used by Claude Code
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskCommit {
+    pub hash: String,
+    pub short_hash: String,
+    pub message: String,
+    pub author: String,
+    pub date: String,
+}
+
+/// Send task to review - auto-commit uncommitted changes using Claude Code
+#[tauri::command]
+pub async fn send_task_to_review(task_id: String) -> Result<(), String> {
+    use std::process::Command;
+
+    info!("Sending task {} to review", task_id);
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
+
+    // Check for uncommitted changes
+    let status_output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to check git status: {}", e))?;
+
+    let has_uncommitted = !status_output.stdout.is_empty();
+
+    if has_uncommitted {
+        info!("Task {} has uncommitted changes, asking Claude to commit", task_id);
+
+        // Use Claude Code to create a commit with a good message
+        let commit_prompt = "Commit all the current changes with a concise one-line commit message that describes what was done. Use conventional commit format (feat:, fix:, etc). Do NOT include Co-Authored-By. Just run git add -A and git commit.";
+
+        let output = Command::new("claude")
+            .args([
+                "-p", commit_prompt,
+                "--allowedTools", "Bash",
+                "--max-turns", "3",
+            ])
+            .current_dir(worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to run Claude for commit: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            // If Claude fails, fallback to simple commit
+            info!("Claude commit failed ({}), using fallback", stderr);
+
+            Command::new("git")
+                .args(["add", "-A"])
+                .current_dir(worktree_path)
+                .output()
+                .map_err(|e| format!("Failed to stage changes: {}", e))?;
+
+            Command::new("git")
+                .args(["commit", "-m", &format!("feat: {}", task.title)])
+                .current_dir(worktree_path)
+                .output()
+                .map_err(|e| format!("Failed to commit: {}", e))?;
+        }
+    }
+
+    // Update task status to Review
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET status = 'Review', updated_at = ?1 WHERE id = ?2",
+        params![now_ts, task_id],
+    ).map_err(|e| format!("Failed to update task status: {}", e))?;
+
+    info!("Task {} sent to review", task_id);
+    Ok(())
+}
+
+/// Get commits for a task branch (compared to main)
+#[tauri::command]
+pub async fn get_task_commits(task_id: String) -> Result<Vec<TaskCommit>, String> {
+    use std::process::Command;
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
+
+    // Get commits on this branch that aren't on main
+    // Format: hash|short_hash|message|author|date
+    let output = Command::new("git")
+        .args([
+            "log",
+            "main..HEAD",
+            "--pretty=format:%H|%h|%s|%an|%ar",
+        ])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to get commits: {}", e))?;
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let commits: Vec<TaskCommit> = output_str
+        .lines()
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(5, '|').collect();
+            if parts.len() >= 5 {
+                Some(TaskCommit {
+                    hash: parts[0].to_string(),
+                    short_hash: parts[1].to_string(),
+                    message: parts[2].to_string(),
+                    author: parts[3].to_string(),
+                    date: parts[4].to_string(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(commits)
+}
+
+/// Amend the last commit message for a task
+#[tauri::command]
+pub async fn amend_task_commit(task_id: String, new_message: String) -> Result<(), String> {
+    use std::process::Command;
+
+    info!("Amending commit message for task {}", task_id);
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
+
+    let output = Command::new("git")
+        .args(["commit", "--amend", "-m", &new_message])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to amend commit: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to amend commit: {}", stderr));
+    }
+
+    info!("Commit message amended for task {}", task_id);
+    Ok(())
+}
+
+/// Check if task has uncommitted changes
+#[tauri::command]
+pub async fn has_uncommitted_changes(task_id: String) -> Result<bool, String> {
+    use std::process::Command;
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let worktree_path = match &task.worktree_path {
+        Some(p) => p,
+        None => return Ok(false),
+    };
+
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to check git status: {}", e))?;
+
+    Ok(!output.stdout.is_empty())
 }

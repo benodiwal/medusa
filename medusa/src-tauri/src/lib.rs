@@ -62,6 +62,10 @@ pub fn run() {
             // Review commands
             commands::merge_task,
             commands::reject_task,
+            commands::send_task_to_review,
+            commands::get_task_commits,
+            commands::amend_task_commit,
+            commands::has_uncommitted_changes,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

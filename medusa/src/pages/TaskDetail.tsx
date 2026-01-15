@@ -11,6 +11,7 @@ import {
   MessageSquare,
   GitBranch,
   GitMerge,
+  GitCommit,
   FolderOpen,
   Bot,
   Loader2,
@@ -20,8 +21,10 @@ import {
   Wrench,
   SendHorizonal,
   X,
+  Pencil,
+  Check,
 } from 'lucide-react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus, TaskCommit } from '../types';
 
 interface AgentOutputEvent {
   task_id: string;
@@ -147,6 +150,9 @@ export default function TaskDetail() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileDiff, setFileDiff] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'chat' | 'diff'>('chat');
+  const [commits, setCommits] = useState<TaskCommit[]>([]);
+  const [editingCommit, setEditingCommit] = useState<string | null>(null);
+  const [editedMessage, setEditedMessage] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -177,6 +183,16 @@ export default function TaskDetail() {
           setChangedFiles(files);
         } catch (e) {
           console.error('Failed to load changed files:', e);
+        }
+
+        // Load commits if in Review status
+        if (t?.status === TaskStatus.Review) {
+          try {
+            const taskCommits = await invoke<TaskCommit[]>('get_task_commits', { taskId: id });
+            setCommits(taskCommits);
+          } catch (e) {
+            console.error('Failed to load commits:', e);
+          }
         }
       }
     } catch (error) {
@@ -292,11 +308,36 @@ export default function TaskDetail() {
   const handleSendToReview = async () => {
     if (!task) return;
     try {
-      await invoke('update_task_status', { id: task.id, status: TaskStatus.Review });
+      // This will auto-commit using Claude Code if there are uncommitted changes
+      await invoke('send_task_to_review', { taskId: task.id });
       loadTask();
     } catch (error) {
       console.error('Failed to send to review:', error);
+      alert(`Failed to send to review: ${error}`);
     }
+  };
+
+  const handleAmendCommit = async () => {
+    if (!task || !editedMessage.trim()) return;
+    try {
+      await invoke('amend_task_commit', { taskId: task.id, newMessage: editedMessage.trim() });
+      setEditingCommit(null);
+      setEditedMessage('');
+      loadTask(); // Reload to get updated commits
+    } catch (error) {
+      console.error('Failed to amend commit:', error);
+      alert(`Failed to amend commit: ${error}`);
+    }
+  };
+
+  const startEditingCommit = (commit: TaskCommit) => {
+    setEditingCommit(commit.hash);
+    setEditedMessage(commit.message);
+  };
+
+  const cancelEditingCommit = () => {
+    setEditingCommit(null);
+    setEditedMessage('');
   };
 
   const handleMerge = async () => {
@@ -500,13 +541,15 @@ export default function TaskDetail() {
                   <Play className="w-4 h-4" />
                   Resume
                 </button>
-                <button
-                  onClick={handleSendToReview}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  <SendHorizonal className="w-4 h-4" />
-                  Send to Review
-                </button>
+                {changedFiles.length > 0 && (
+                  <button
+                    onClick={handleSendToReview}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <SendHorizonal className="w-4 h-4" />
+                    Send to Review
+                  </button>
+                )}
               </>
             ) : (
               <button
@@ -527,46 +570,48 @@ export default function TaskDetail() {
         </div>
       </header>
 
-      {/* Tab Bar - Fixed */}
-      <div className="border-b border-border px-6 shrink-0 bg-background">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'chat'
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Chat
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('diff')}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'diff'
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <FileCode className="w-4 h-4" />
-              Changes
-              {changedFiles.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  {changedFiles.length}
-                </span>
-              )}
-            </div>
-          </button>
+      {/* Tab Bar - Fixed (hidden in Review mode, only show Changes) */}
+      {task.status !== TaskStatus.Review && (
+        <div className="border-b border-border px-6 shrink-0 bg-background">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'chat'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Chat
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('diff')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'diff'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <FileCode className="w-4 h-4" />
+                Changes
+                {changedFiles.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                    {changedFiles.length}
+                  </span>
+                )}
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 flex min-h-0">
-        {activeTab === 'chat' ? (
+        {activeTab === 'chat' && task.status !== TaskStatus.Review ? (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Messages - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -660,35 +705,131 @@ export default function TaskDetail() {
         ) : (
           /* Diff View */
           <div className="flex-1 flex">
-            {/* File List */}
-            <div className="w-64 border-r border-border overflow-y-auto">
-              <div className="p-3 border-b border-border">
-                <h3 className="text-sm font-medium text-foreground">Changed Files</h3>
-              </div>
-              {changedFiles.length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground text-center">
-                  No changes yet
-                </div>
-              ) : (
-                <div className="p-2 space-y-1">
-                  {changedFiles.map((file) => (
-                    <button
-                      key={file}
-                      onClick={() => handleSelectFile(file)}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
-                        selectedFile === file
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileCode className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{file}</span>
-                      </div>
-                    </button>
-                  ))}
+            {/* Sidebar: Files and Commits */}
+            <div className="w-72 border-r border-border overflow-y-auto flex flex-col">
+              {/* Commits Section - shown in Review mode */}
+              {task.status === TaskStatus.Review && (
+                <div className="border-b border-border">
+                  <div className="p-3 border-b border-border bg-muted/30">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <GitCommit className="w-4 h-4" />
+                      Commits
+                      {commits.length > 0 && (
+                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {commits.length}
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  {commits.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      No commits yet
+                    </div>
+                  ) : (
+                    <div className="p-2 space-y-2">
+                      {commits.map((commit, index) => (
+                        <div
+                          key={commit.hash}
+                          className="p-2 rounded-lg bg-card border border-border"
+                        >
+                          {editingCommit === commit.hash ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                value={editedMessage}
+                                onChange={(e) => setEditedMessage(e.target.value)}
+                                className="w-full px-2 py-1 text-sm bg-muted border border-border rounded focus:outline-none focus:border-primary"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleAmendCommit();
+                                  if (e.key === 'Escape') cancelEditingCommit();
+                                }}
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={handleAmendCommit}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  Save
+                                </button>
+                                <button
+                                  onClick={cancelEditingCommit}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-muted text-muted-foreground rounded hover:bg-muted/80"
+                                >
+                                  <X className="w-3 h-3" />
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm text-foreground font-medium break-words flex-1">
+                                  {commit.message}
+                                </p>
+                                {index === 0 && (
+                                  <button
+                                    onClick={() => startEditingCommit(commit)}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded shrink-0"
+                                    title="Edit commit message"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span className="font-mono">{commit.short_hash}</span>
+                                <span>·</span>
+                                <span>{commit.date}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* File List */}
+              <div className="flex-1">
+                <div className="p-3 border-b border-border">
+                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <FileCode className="w-4 h-4" />
+                    Changed Files
+                    {changedFiles.length > 0 && (
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                        {changedFiles.length}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                {changedFiles.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    No changes yet
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {changedFiles.map((file) => (
+                      <button
+                        key={file}
+                        onClick={() => handleSelectFile(file)}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                          selectedFile === file
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileCode className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{file}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Diff Content */}

@@ -151,3 +151,12 @@ export interface Task {
   updated_at: number;
 }
 
+// Commit information for task branch
+export interface TaskCommit {
+  hash: string;
+  short_hash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+

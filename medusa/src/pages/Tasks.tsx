@@ -117,10 +117,20 @@ export default function Tasks() {
 
   const handleSendToReview = async (task: Task) => {
     try {
-      await invoke('update_task_status', { id: task.id, status: TaskStatus.Review });
+      // Check if there are any changed files before sending to review
+      if (task.worktree_path) {
+        const changedFiles = await invoke<string[]>('get_task_changed_files', { taskId: task.id });
+        if (changedFiles.length === 0) {
+          alert('Cannot send to review: No files have been changed.');
+          return;
+        }
+      }
+      // This will auto-commit using Claude Code if there are uncommitted changes
+      await invoke('send_task_to_review', { taskId: task.id });
       loadTasks();
     } catch (error) {
       console.error('Failed to send to review:', error);
+      alert(`Failed to send to review: ${error}`);
     }
   };
 
