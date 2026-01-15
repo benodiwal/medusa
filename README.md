@@ -1,23 +1,30 @@
 # Medusa
 
-A desktop app for reviewing Claude Code plans before execution.
+Your control center for AI-powered development with Claude Code.
 
 ![Medusa](medusa/public/medusa-logo.png)
 
 **Website:** [heymedusa.net](https://heymedusa.net) | **Documentation:** [heymedusa.net/docs](https://heymedusa.net/docs)
 
-## What it does
+## What is Medusa?
 
-When Claude Code enters plan mode, Medusa intercepts the plan via a hook and presents it in a review interface. You can:
+Medusa is a desktop app that gives you human oversight over Claude Code through two integrated workflows:
 
-- Review plans in a kanban-style board
+### Plans
+When Claude Code enters plan mode, Medusa intercepts the plan and lets you review it before execution:
+- Review plans in a kanban board
 - Add inline annotations (comments, deletions, suggested changes)
-- Approve plans or request changes with feedback
+- Approve or request changes with structured feedback
 - View diffs between plan revisions
-- Browse history of reviewed plans with search
-- Save plans to Obsidian
 
-Claude Code waits for your decision before proceeding.
+### Tasks
+Create tasks and let Claude Code work autonomously on isolated git branches:
+- Run multiple agents in parallel (each on its own git worktree)
+- Monitor progress in real-time
+- Review code changes before merging
+- One-click merge when ready
+
+Both workflows live in a single unified board—see plans awaiting review alongside running agents and completed tasks.
 
 ## Installation
 
@@ -25,12 +32,11 @@ Claude Code waits for your decision before proceeding.
 
 Download the latest `.dmg` from [Releases](https://github.com/benodiwal/medusa/releases).
 
-**macOS users:** The app is not code-signed yet. After installing, you'll need to allow it to run:
+**macOS users:** The app is not code-signed yet. After installing:
 
 1. Open the `.dmg` and drag Medusa to Applications
 2. **Right-click** (or Control-click) on Medusa.app and select **Open**
 3. Click **Open** in the dialog that appears
-4. You only need to do this once
 
 If that doesn't work, run this in Terminal:
 ```bash
@@ -47,19 +53,30 @@ npm run tauri build
 
 The app will be at `src-tauri/target/release/bundle/macos/medusa.app`
 
-## Hook Setup
+## Quick Start
 
-1. Copy the hook script to your Claude hooks directory:
+### Using Tasks (No Setup Required)
 
+1. Open Medusa
+2. Click **New Task**
+3. Enter a title, description, and select your project folder
+4. Click **Start Agent** to begin
+
+The agent runs on an isolated git branch. When it's done, review the changes and merge.
+
+### Using Plans (Requires Hook Setup)
+
+To intercept Claude Code plans, you need to configure a hook:
+
+1. Copy the hook script:
 ```bash
 cp hooks/medusa-plan-review.sh ~/.claude/hooks/
 chmod +x ~/.claude/hooks/medusa-plan-review.sh
 ```
 
-2. Edit `~/.claude/hooks/medusa-plan-review.sh` and update the `MEDUSA_APP` path to point to your installation.
+2. Edit `~/.claude/hooks/medusa-plan-review.sh` and update the `MEDUSA_APP` path.
 
-3. Add the hook configuration to your `~/.claude/settings.json`:
-
+3. Add to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
@@ -79,9 +96,53 @@ chmod +x ~/.claude/hooks/medusa-plan-review.sh
 }
 ```
 
-**Important:** The `timeout` value (in seconds) controls how long Claude Code waits for your review. If the timeout is reached, Claude Code will **automatically proceed without approval**. Set it to `86400` (24 hours) to avoid this.
+**Important:** Set `timeout` to `86400` (24 hours). If timeout is reached, Claude proceeds without approval.
 
-See [hooks/claude-settings.json](hooks/claude-settings.json) for the full configuration.
+## Workflow
+
+### Task Lifecycle
+
+```
+Backlog → In Progress → Review → Done
+   │           │           │
+   │     Agent runs    Review diffs
+   │     on worktree   Edit commits
+   │                   Merge to main
+   └── Click "Start Agent"
+```
+
+### Plan Lifecycle
+
+```
+Pending → In Review → Approved/Changes Requested
+   │          │              │
+   │     Add annotations     │
+   │     Review content      └── Claude revises
+   │                              (back to Pending)
+   └── Claude sends plan
+```
+
+### Unified Board
+
+Both plans and tasks appear in the same kanban:
+- **Backlog**: Tasks waiting to start
+- **In Progress**: Running agents + Plans being revised
+- **Review**: Task diffs ready for review + Plans awaiting approval
+- **Done**: Merged tasks + Approved plans
+
+## Features
+
+| Feature | Plans | Tasks |
+|---------|-------|-------|
+| Kanban board | ✓ | ✓ |
+| Rich annotations | ✓ | — |
+| Revision diffs | ✓ | — |
+| Code diffs | — | ✓ |
+| Parallel execution | — | ✓ |
+| Git worktrees | — | ✓ |
+| One-click merge | — | ✓ |
+| Obsidian export | ✓ | — |
+| Plan sharing | ✓ | — |
 
 ## Keyboard Shortcuts
 
@@ -94,10 +155,10 @@ See [hooks/claude-settings.json](hooks/claude-settings.json) for the full config
 
 ## Data Storage
 
-- `~/.medusa/queue.json` - Plan queue
-- `~/.medusa/settings.json` - App settings
-- `~/.medusa/history.db` - SQLite database for reviewed plans history
+- `~/.medusa/medusa.db` - SQLite database (plans, tasks, history)
+- `~/.medusa/sessions/` - Agent session files
 - `~/.medusa/pending/` - Incoming plans from hook
+- `.medusa-worktrees/` - Git worktrees for tasks (in each project)
 
 ## Stack
 
@@ -106,7 +167,11 @@ See [hooks/claude-settings.json](hooks/claude-settings.json) for the full config
 - Tailwind CSS
 - Rust
 
-## Please Consider Giving the Repo a Star ⭐
+## Contributing
+
+Found a bug or have a feature request? [Open an issue](https://github.com/benodiwal/medusa/issues).
+
+## Please Consider Giving the Repo a Star
 
 <a href="https://github.com/benodiwal/medusa">
   <picture>
