@@ -816,7 +816,6 @@ pub async fn get_history_count() -> Result<u32, String> {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TaskStatus {
     Backlog,
-    Planning,
     InProgress,
     Review,
     Done,
@@ -826,7 +825,6 @@ impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TaskStatus::Backlog => write!(f, "Backlog"),
-            TaskStatus::Planning => write!(f, "Planning"),
             TaskStatus::InProgress => write!(f, "InProgress"),
             TaskStatus::Review => write!(f, "Review"),
             TaskStatus::Done => write!(f, "Done"),
@@ -839,10 +837,11 @@ impl std::str::FromStr for TaskStatus {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Backlog" => Ok(TaskStatus::Backlog),
-            "Planning" => Ok(TaskStatus::Planning),
             "InProgress" => Ok(TaskStatus::InProgress),
             "Review" => Ok(TaskStatus::Review),
             "Done" => Ok(TaskStatus::Done),
+            // Support legacy Planning status by treating it as InProgress
+            "Planning" => Ok(TaskStatus::InProgress),
             _ => Err(format!("Invalid task status: {}", s)),
         }
     }
@@ -1264,10 +1263,10 @@ pub async fn start_task_agent(
     Ok(agent_info)
 }
 
-/// Stop an agent for a task
+/// Stop an agent for a task (pauses the agent, keeps task in InProgress)
 #[tauri::command]
 pub async fn stop_task_agent(task_id: String) -> Result<(), String> {
-    info!("Stopping agent for task: {}", task_id);
+    info!("Pausing agent for task: {}", task_id);
 
     let manager = TASK_AGENT_MANAGER.lock()
         .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
@@ -1275,16 +1274,16 @@ pub async fn stop_task_agent(task_id: String) -> Result<(), String> {
     manager.stop_agent(&task_id)
         .map_err(|e| format!("Failed to stop agent: {}", e))?;
 
-    // Update task status
+    // Update task - only clear agent_pid, keep status as InProgress (paused state)
     let conn = init_tasks_db()?;
     let now_ts = now();
 
     conn.execute(
-        "UPDATE kanban_tasks SET agent_pid = NULL, status = 'Review', updated_at = ?1 WHERE id = ?2",
+        "UPDATE kanban_tasks SET agent_pid = NULL, updated_at = ?1 WHERE id = ?2",
         params![now_ts, task_id],
     ).map_err(|e| format!("Failed to update task: {}", e))?;
 
-    info!("Agent stopped for task {}", task_id);
+    info!("Agent paused for task {}", task_id);
     Ok(())
 }
 
@@ -1438,4 +1437,112 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
     }
 
     Ok(diff_output)
+}
+
+/// Merge a task's worktree branch into main and mark as done
+#[tauri::command]
+pub async fn merge_task(task_id: String) -> Result<(), String> {
+    use crate::git::GitManager;
+
+    info!("Merging task: {}", task_id);
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    let branch = task.branch.as_ref()
+        .ok_or_else(|| "Task has no branch to merge".to_string())?;
+
+    let git = GitManager::new(task.project_path.clone())
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    // Commit any uncommitted changes in worktree first
+    git.commit_worktree(&task_id, &format!("feat: {}", task.title))
+        .map_err(|e| format!("Failed to commit changes: {}", e))?;
+
+    // Get the current branch to return to after merge
+    let current_branch = git.current_branch()
+        .map_err(|e| format!("Failed to get current branch: {}", e))?;
+
+    // Merge the task branch into current branch (usually main)
+    git.merge(branch, &current_branch)
+        .map_err(|e| format!("Failed to merge: {}", e))?;
+
+    // Clean up worktree
+    git.remove_worktree(&task_id)
+        .map_err(|e| format!("Failed to remove worktree: {}", e))?;
+
+    // Update task status to Done
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET status = 'Done', completed_at = ?1, updated_at = ?2, worktree_path = NULL WHERE id = ?3",
+        params![now_ts, now_ts, task_id],
+    ).map_err(|e| format!("Failed to update task: {}", e))?;
+
+    info!("Task {} merged successfully", task_id);
+    Ok(())
+}
+
+/// Reject a task - discard changes and move back to backlog
+#[tauri::command]
+pub async fn reject_task(task_id: String) -> Result<(), String> {
+    use crate::git::GitManager;
+
+    info!("Rejecting task: {}", task_id);
+
+    let task = get_task(task_id.clone()).await?
+        .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+    // Clean up agent if running
+    {
+        let manager = TASK_AGENT_MANAGER.lock()
+            .map_err(|e| format!("Failed to lock agent manager: {}", e))?;
+        let _ = manager.stop_agent(&task_id);
+    }
+
+    // Remove worktree if exists
+    if task.worktree_path.is_some() {
+        let git = GitManager::new(task.project_path.clone())
+            .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+        git.remove_worktree(&task_id)
+            .map_err(|e| format!("Failed to remove worktree: {}", e))?;
+
+        // Also delete the branch
+        if let Some(ref branch) = task.branch {
+            let _ = git.delete_branch(branch); // Ignore error if branch doesn't exist
+        }
+    }
+
+    // Update task - move back to Backlog and clear all execution data
+    let conn = init_tasks_db()?;
+    let now_ts = now();
+
+    conn.execute(
+        "UPDATE kanban_tasks SET
+            status = 'Backlog',
+            agent_pid = NULL,
+            session_id = NULL,
+            branch = NULL,
+            worktree_path = NULL,
+            started_at = NULL,
+            completed_at = NULL,
+            files_changed = NULL,
+            diff_summary = NULL,
+            updated_at = ?1
+         WHERE id = ?2",
+        params![now_ts, task_id],
+    ).map_err(|e| format!("Failed to update task: {}", e))?;
+
+    // Also clean up session files
+    let sessions_dir = dirs::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".medusa")
+        .join("sessions");
+    let _ = std::fs::remove_file(sessions_dir.join(format!("{}.jsonl", task_id)));
+    let _ = std::fs::remove_file(sessions_dir.join(format!("{}.session_id", task_id)));
+
+    info!("Task {} rejected and moved back to backlog", task_id);
+    Ok(())
 }

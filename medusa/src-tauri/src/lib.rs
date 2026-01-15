@@ -59,6 +59,9 @@ pub fn run() {
             commands::send_agent_message,
             commands::has_active_agent_session,
             commands::get_task_file_diff,
+            // Review commands
+            commands::merge_task,
+            commands::reject_task,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

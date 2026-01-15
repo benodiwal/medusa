@@ -119,7 +119,6 @@ export interface AuthorIdentity {
 // Task Management types for Medusa 2.0
 export enum TaskStatus {
   Backlog = 'Backlog',
-  Planning = 'Planning',
   InProgress = 'InProgress',
   Review = 'Review',
   Done = 'Done',

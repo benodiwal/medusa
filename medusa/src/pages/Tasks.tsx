@@ -8,7 +8,6 @@ import { TaskCard, CreateTaskModal, AgentOutputModal } from '../components/tasks
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: TaskStatus.Backlog, label: 'Backlog', color: 'text-muted-foreground' },
-  { status: TaskStatus.Planning, label: 'Planning', color: 'text-primary' },
   { status: TaskStatus.InProgress, label: 'In Progress', color: 'text-primary' },
   { status: TaskStatus.Review, label: 'Review', color: 'text-primary' },
   { status: TaskStatus.Done, label: 'Done', color: 'text-muted-foreground' },
@@ -27,6 +26,7 @@ export default function Tasks() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [outputTask, setOutputTask] = useState<Task | null>(null);
 
   const loadTasks = useCallback(async () => {
@@ -115,16 +115,31 @@ export default function Tasks() {
     }
   };
 
+  const handleSendToReview = async (task: Task) => {
+    try {
+      await invoke('update_task_status', { id: task.id, status: TaskStatus.Review });
+      loadTasks();
+    } catch (error) {
+      console.error('Failed to send to review:', error);
+    }
+  };
+
   const handleDragStart = (task: Task) => {
     setDraggedTask(task);
   };
 
   const handleDragEnd = () => {
     setDraggedTask(null);
+    setDragOverColumn(null);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, status: TaskStatus) => {
     e.preventDefault();
+    setDragOverColumn(status);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
   };
 
   const handleDrop = (status: TaskStatus) => {
@@ -132,6 +147,7 @@ export default function Tasks() {
       handleUpdateStatus(draggedTask.id, status);
     }
     setDraggedTask(null);
+    setDragOverColumn(null);
   };
 
   // Filter tasks by search query
@@ -242,8 +258,11 @@ export default function Tasks() {
           {COLUMNS.map((column) => (
             <div
               key={column.status}
-              className="flex-1 min-w-[280px] max-w-[350px]"
-              onDragOver={handleDragOver}
+              className={`flex-1 min-w-[280px] max-w-[350px] rounded-lg p-2 -m-2 transition-colors ${
+                dragOverColumn === column.status ? 'bg-primary/10' : ''
+              }`}
+              onDragOver={(e) => handleDragOver(e, column.status)}
+              onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(column.status)}
             >
               {/* Column Header */}
@@ -275,6 +294,7 @@ export default function Tasks() {
                       onDelete={() => handleDeleteTask(task.id)}
                       onStartAgent={() => handleStartAgent(task)}
                       onStopAgent={() => handleStopAgent(task)}
+                      onSendToReview={() => handleSendToReview(task)}
                       onViewOutput={() => setOutputTask(task)}
                       isDragging={draggedTask?.id === task.id}
                     />

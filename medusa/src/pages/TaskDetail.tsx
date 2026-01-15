@@ -6,10 +6,11 @@ import {
   ArrowLeft,
   Send,
   Play,
-  Square,
+  Pause,
   FileCode,
   MessageSquare,
   GitBranch,
+  GitMerge,
   FolderOpen,
   Bot,
   Loader2,
@@ -17,8 +18,10 @@ import {
   Plus,
   Minus,
   Wrench,
+  SendHorizonal,
+  X,
 } from 'lucide-react';
-import { Task } from '../types';
+import { Task, TaskStatus } from '../types';
 
 interface AgentOutputEvent {
   task_id: string;
@@ -139,7 +142,6 @@ export default function TaskDetail() {
   const [messages, setMessages] = useState<ParsedMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
-  const [thinking, setThinking] = useState(false);
   const [hasActiveSession, setHasActiveSession] = useState(false);
   const [changedFiles, setChangedFiles] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -186,10 +188,10 @@ export default function TaskDetail() {
 
   // Load initial data
   useEffect(() => {
-    // Reset tracking when task changes
+    // Reset tracking and states when task changes
     processedLinesRef.current.clear();
     setMessages([]);
-
+    
     loadTask();
 
     // Load existing output
@@ -204,6 +206,8 @@ export default function TaskDetail() {
         const parsed = lines.map(parseClaudeLine).filter((m): m is ParsedMessage => m !== null);
         setMessages(parsed);
 
+        // Ensure thinking is reset when loading existing conversation
+        
         // Auto-scroll to bottom after loading
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
@@ -230,8 +234,7 @@ export default function TaskDetail() {
         const parsed = parseClaudeLine(event.payload.line);
         if (parsed) {
           // Only stop thinking when we get an actual displayable message
-          setThinking(false);
-          setMessages((prev) => [...prev, parsed]);
+                    setMessages((prev) => [...prev, parsed]);
         }
       }
     });
@@ -268,13 +271,11 @@ export default function TaskDetail() {
   const handleStartAgent = async () => {
     if (!task) return;
     try {
-      setThinking(true);
       await invoke('start_task_agent', { taskId: task.id });
       loadTask();
     } catch (error) {
       console.error('Failed to start agent:', error);
       alert(`Failed to start agent: ${error}`);
-      setThinking(false);
     }
   };
 
@@ -285,6 +286,40 @@ export default function TaskDetail() {
       loadTask();
     } catch (error) {
       console.error('Failed to stop agent:', error);
+    }
+  };
+
+  const handleSendToReview = async () => {
+    if (!task) return;
+    try {
+      await invoke('update_task_status', { id: task.id, status: TaskStatus.Review });
+      loadTask();
+    } catch (error) {
+      console.error('Failed to send to review:', error);
+    }
+  };
+
+  const handleMerge = async () => {
+    if (!task) return;
+    if (!confirm(`Merge branch "${task.branch}" into main and mark task as done?`)) return;
+    try {
+      await invoke('merge_task', { taskId: task.id });
+      navigate('/tasks');
+    } catch (error) {
+      console.error('Failed to merge:', error);
+      alert(`Failed to merge: ${error}`);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!task) return;
+    if (!confirm('Reject this task? All changes will be discarded and the worktree will be removed.')) return;
+    try {
+      await invoke('reject_task', { taskId: task.id });
+      navigate('/tasks');
+    } catch (error) {
+      console.error('Failed to reject:', error);
+      alert(`Failed to reject: ${error}`);
     }
   };
 
@@ -299,14 +334,12 @@ export default function TaskDetail() {
         { type: 'user', content: inputValue.trim(), timestamp: new Date() },
       ]);
 
-      setThinking(true);
-      await invoke('send_agent_message', { taskId: task.id, message: inputValue.trim() });
+            await invoke('send_agent_message', { taskId: task.id, message: inputValue.trim() });
       setInputValue('');
     } catch (error) {
       console.error('Failed to send message:', error);
       alert(`Failed to send message: ${error}`);
-      setThinking(false);
-    } finally {
+          } finally {
       setSending(false);
     }
   };
@@ -401,7 +434,30 @@ export default function TaskDetail() {
           </div>
 
           <div className="flex items-center gap-2">
-            {isRunning ? (
+            {task.status === TaskStatus.Review ? (
+              <>
+                {task.branch && (
+                  <span className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1 rounded font-mono">
+                    <GitBranch className="w-3 h-3" />
+                    {task.branch}
+                  </span>
+                )}
+                <button
+                  onClick={handleMerge}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  <GitMerge className="w-4 h-4" />
+                  Merge
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Reject
+                </button>
+              </>
+            ) : isRunning ? (
               <>
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   <span className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
@@ -409,16 +465,16 @@ export default function TaskDetail() {
                 </span>
                 <button
                   onClick={handleStopAgent}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
                 >
-                  <Square className="w-4 h-4" />
-                  Stop
+                  <Pause className="w-4 h-4" />
+                  Pause
                 </button>
               </>
             ) : canResume ? (
               <>
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                  Session paused
+                  Paused
                 </span>
                 <button
                   onClick={handleStartAgent}
@@ -426,6 +482,13 @@ export default function TaskDetail() {
                 >
                   <Play className="w-4 h-4" />
                   Resume
+                </button>
+                <button
+                  onClick={handleSendToReview}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  <SendHorizonal className="w-4 h-4" />
+                  Send to Review
                 </button>
               </>
             ) : (
@@ -535,20 +598,6 @@ export default function TaskDetail() {
                     )}
                   </div>
                 ))
-              )}
-              {/* Thinking indicator */}
-              {thinking && (
-                <div className="flex gap-3">
-                  <div className="shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="bg-card border border-border rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Thinking...</span>
-                    </div>
-                  </div>
-                </div>
               )}
               <div ref={messagesEndRef} />
             </div>

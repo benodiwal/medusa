@@ -156,74 +156,34 @@ impl TaskAgentManager {
         // Check if we have an existing session to resume
         let existing_session_id = load_session_id(task_id);
 
-        // Find claude binary
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
-
-        let mut claude_path: Option<PathBuf> = None;
-
-        // Check common locations
-        let search_paths = vec![
-            format!("{}/.local/bin/claude", home),
-            format!("{}/.claude/local/bin/claude", home),
-            "/usr/local/bin/claude".to_string(),
-            "/opt/homebrew/bin/claude".to_string(),
-        ];
-
-        for path in &search_paths {
-            let p = PathBuf::from(path);
-            if p.exists() {
-                claude_path = Some(p);
-                break;
-            }
-        }
-
-        // Check nvm paths
-        if claude_path.is_none() {
-            let nvm_dir = format!("{}/.nvm/versions/node", home);
-            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
-                for entry in entries.flatten() {
-                    let bin_path = entry.path().join("bin").join("claude");
-                    if bin_path.exists() {
-                        claude_path = Some(bin_path);
-                        break;
-                    }
-                }
-            }
-        }
-
-        let claude_binary = claude_path.unwrap_or_else(|| PathBuf::from("claude"));
-        info!("Using claude binary: {:?}", claude_binary);
-
-        // Build the Claude command for interactive mode
-        let mut cmd = Command::new(&claude_binary);
-
-        if let Some(ref session_id) = existing_session_id {
+        // Build claude args
+        let claude_args = if let Some(ref session_id) = existing_session_id {
             info!("Resuming session {} for task {}", session_id, task_id);
-            cmd.args([
-                "--resume", session_id,
-                "--verbose",
-                "--output-format", "stream-json",
-                "--input-format", "stream-json",
-                "--dangerously-skip-permissions",
-            ]);
+            format!(
+                "--resume {} --verbose --output-format stream-json --input-format stream-json --dangerously-skip-permissions",
+                session_id
+            )
         } else {
-            cmd.args([
-                "--verbose",
-                "--output-format", "stream-json",
-                "--input-format", "stream-json",
-                "--dangerously-skip-permissions",
-            ]);
-        }
+            "--verbose --output-format stream-json --input-format stream-json --dangerously-skip-permissions".to_string()
+        };
 
-        // Build PATH for the child process (claude may need node, etc.)
-        let path = std::env::var("PATH").unwrap_or_default();
-        let nvm_bin = claude_binary.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-        let extended_path = format!(
-            "{}:{}/.local/bin:/usr/local/bin:/opt/homebrew/bin:{}",
-            nvm_bin, home, path
+        // Use zsh with nvm sourced explicitly
+        let home = std::env::var("HOME").unwrap_or_else(|_| {
+            // Fallback: try to get home from /etc/passwd or use a default
+            std::env::var("USER")
+                .map(|u| format!("/Users/{}", u))
+                .unwrap_or_else(|_| "/Users".to_string())
+        });
+
+        let shell_cmd = format!(
+            "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; claude {}",
+            claude_args
         );
+        info!("Running via shell: {}", shell_cmd);
 
-        cmd.env("PATH", &extended_path)
+        let mut cmd = Command::new("/bin/zsh");
+        cmd.args(["-c", &shell_cmd])
+            .env("HOME", &home)
             .current_dir(&worktree_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

@@ -1,4 +1,4 @@
-import { Clock, Play, Square, Trash2, GitBranch, FolderOpen, Terminal, Eye } from 'lucide-react';
+import { Clock, Play, Trash2, GitBranch, FolderOpen, Terminal, Eye, Pause, Send } from 'lucide-react';
 import { Task, TaskStatus } from '../../types';
 
 interface TaskCardProps {
@@ -7,6 +7,7 @@ interface TaskCardProps {
   onDelete: () => void;
   onStartAgent?: () => void;
   onStopAgent?: () => void;
+  onSendToReview?: () => void;
   onViewOutput?: () => void;
   isDragging?: boolean;
 }
@@ -17,6 +18,7 @@ export function TaskCard({
   onDelete,
   onStartAgent,
   onStopAgent,
+  onSendToReview,
   onViewOutput,
   isDragging,
 }: TaskCardProps) {
@@ -32,8 +34,6 @@ export function TaskCard({
     switch (status) {
       case TaskStatus.Backlog:
         return 'bg-muted text-muted-foreground';
-      case TaskStatus.Planning:
-        return 'bg-primary/10 text-primary';
       case TaskStatus.InProgress:
         return 'bg-primary/10 text-primary';
       case TaskStatus.Review:
@@ -47,7 +47,10 @@ export function TaskCard({
 
   const projectName = task.project_path.split('/').pop() || 'Unknown';
   const isRunning = !!task.agent_pid;
-  const canStart = task.status === TaskStatus.Backlog || task.status === TaskStatus.Planning;
+  const isPaused = !task.agent_pid && !!task.session_id && task.status === TaskStatus.InProgress;
+  const isInProgressNotRunning = task.status === TaskStatus.InProgress && !task.agent_pid;
+  const canStart = task.status === TaskStatus.Backlog;
+  const canResume = isPaused;
 
   return (
     <div
@@ -64,12 +67,17 @@ export function TaskCard({
         <span className={`text-xs font-medium px-2 py-0.5 rounded ${getStatusColor(task.status)}`}>
           {task.status}
         </span>
-        {isRunning && (
+        {isRunning ? (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
             Running
           </span>
-        )}
+        ) : isPaused ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Pause className="w-3 h-3" />
+            Paused
+          </span>
+        ) : null}
       </div>
 
       {/* Title */}
@@ -106,7 +114,7 @@ export function TaskCard({
         </div>
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Start Agent button - shown for backlog/planning tasks */}
+          {/* Start Agent button - shown for backlog tasks */}
           {canStart && !isRunning && onStartAgent && (
             <button
               onClick={(e) => {
@@ -120,22 +128,50 @@ export function TaskCard({
             </button>
           )}
 
-          {/* Stop Agent button - shown when running */}
+          {/* Resume Agent button - shown for paused tasks */}
+          {canResume && onStartAgent && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartAgent();
+              }}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+              title="Resume Agent"
+            >
+              <Play className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Pause Agent button - shown when running */}
           {isRunning && onStopAgent && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onStopAgent();
               }}
-              className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
-              title="Stop Agent"
+              className="p-1.5 text-muted-foreground hover:text-muted-foreground/80 hover:bg-muted rounded transition-colors"
+              title="Pause Agent"
             >
-              <Square className="w-3.5 h-3.5" />
+              <Pause className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {/* View Output button - shown when running or has output */}
-          {(isRunning || task.status === TaskStatus.Review) && onViewOutput && (
+          {/* Send to Review button - shown for InProgress tasks that are paused */}
+          {isPaused && onSendToReview && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSendToReview();
+              }}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+              title="Send to Review"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* View Output button - shown when running, paused, or in review */}
+          {(isRunning || isPaused || task.status === TaskStatus.Review) && onViewOutput && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -194,6 +230,22 @@ export function TaskCard({
             </div>
             <span className="text-xs text-muted-foreground">Working...</span>
           </div>
+        </div>
+      )}
+
+      {/* Send to Review button - shown for any InProgress task that's not running */}
+      {isInProgressNotRunning && onSendToReview && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSendToReview();
+            }}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+          >
+            <Send className="w-3 h-3" />
+            Send to Review
+          </button>
         </div>
       )}
     </div>
