@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import { ArrowLeft, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { Task, TaskStatus } from '../types';
 import { TaskCard, CreateTaskModal, AgentOutputModal } from '../components/tasks';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: TaskStatus.Backlog, label: 'Backlog', color: 'text-muted-foreground' },
@@ -74,7 +75,12 @@ export default function Tasks() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+    const confirmed = await ask('Delete this task?', {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    });
+    if (!confirmed) return;
+
     try {
       // Cleanup agent if running
       const task = tasks.find((t) => t.id === id);

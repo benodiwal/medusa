@@ -27,6 +27,7 @@ import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
 import { CreateTaskModal, AgentOutputModal } from '../components/tasks';
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 // Unified column definitions
 const COLUMNS = [
@@ -252,7 +253,12 @@ export default function UnifiedKanban() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+    const confirmed = await ask('Delete this task?', {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    });
+    if (!confirmed) return;
+
     try {
       const task = tasks.find(t => t.id === id);
       if (task?.agent_pid) {

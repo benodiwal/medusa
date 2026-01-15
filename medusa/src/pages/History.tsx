@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { ArrowLeft, Search, Clock, CheckCircle, XCircle, Loader2, X, Trash2, Eye } from 'lucide-react';
 import { HistoryPreviewModal } from '../components/history';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 interface HistoryItem {
   id: string;
@@ -62,7 +63,11 @@ export default function History() {
   };
 
   const handleClearOldHistory = async () => {
-    if (!confirm('Clear history older than 30 days?')) return;
+    const confirmed = await ask('Clear history older than 30 days?', {
+      title: 'Confirm Clear History',
+      kind: 'warning',
+    });
+    if (!confirmed) return;
 
     try {
       const deleted = await invoke<number>('clear_old_history', { days: 30 });

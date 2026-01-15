@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskStatus, TaskCommit } from '../types';
 import { MarkdownRenderer } from '../components/chat/MarkdownRenderer';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 interface AgentOutputEvent {
   task_id: string;
@@ -365,7 +366,12 @@ export default function TaskDetail() {
 
   const handleMerge = async () => {
     if (!task) return;
-    if (!confirm(`Merge branch "${task.branch}" into main and mark task as done?`)) return;
+    const confirmed = await ask(`Merge branch "${task.branch}" into main and mark task as done?`, {
+      title: 'Confirm Merge',
+      kind: 'info',
+    });
+    if (!confirmed) return;
+
     try {
       await invoke('merge_task', { taskId: task.id });
       navigate('/');
@@ -377,7 +383,12 @@ export default function TaskDetail() {
 
   const handleReject = async () => {
     if (!task) return;
-    if (!confirm('Reject this task? All changes will be discarded and the worktree will be removed.')) return;
+    const confirmed = await ask('Reject this task? All changes will be discarded and the worktree will be removed.', {
+      title: 'Confirm Reject',
+      kind: 'warning',
+    });
+    if (!confirmed) return;
+
     try {
       await invoke('reject_task', { taskId: task.id });
       navigate('/');
