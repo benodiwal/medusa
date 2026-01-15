@@ -323,6 +323,16 @@ export default function TaskDetail() {
     }
   };
 
+  const handleContinueWorking = async () => {
+    if (!task) return;
+    try {
+      await invoke('update_task_status', { id: task.id, status: TaskStatus.InProgress });
+      loadTask();
+    } catch (error) {
+      console.error('Failed to move back to in progress:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!task || !inputValue.trim() || sending) return;
 
@@ -443,6 +453,13 @@ export default function TaskDetail() {
                   </span>
                 )}
                 <button
+                  onClick={handleContinueWorking}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Continue Working
+                </button>
+                <button
                   onClick={handleMerge}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
                 >
@@ -451,7 +468,7 @@ export default function TaskDetail() {
                 </button>
                 <button
                   onClick={handleReject}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Reject
