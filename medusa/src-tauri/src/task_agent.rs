@@ -378,10 +378,19 @@ impl TaskAgentManager {
                 }
             });
 
-            // Persist user message to session file
-            append_to_session_file(task_id, &json_message.to_string());
+            let json_str = json_message.to_string();
 
-            writeln!(stdin, "{}", json_message.to_string())?;
+            // Persist user message to session file
+            append_to_session_file(task_id, &json_str);
+
+            // Also add to in-memory output_lines so it shows in UI immediately
+            if let Ok(mut agents) = self.agents.lock() {
+                if let Some(agent) = agents.get_mut(task_id) {
+                    agent.info.output_lines.push(json_str.clone());
+                }
+            }
+
+            writeln!(stdin, "{}", json_str)?;
             stdin.flush()?;
 
             info!("Message sent to agent {}", task_id);
