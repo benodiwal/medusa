@@ -23,6 +23,8 @@ import {
   X,
   Pencil,
   Check,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import { Task, TaskStatus, TaskCommit } from '../types';
 
@@ -489,7 +491,12 @@ export default function TaskDetail() {
           </div>
 
           <div className="flex items-center gap-2">
-            {task.status === TaskStatus.Review ? (
+            {task.status === TaskStatus.Done ? (
+              <span className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                <CheckCircle className="w-3 h-3" />
+                Completed
+              </span>
+            ) : task.status === TaskStatus.Review ? (
               <>
                 {task.branch && (
                   <span className="flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1 rounded font-mono">
@@ -581,8 +588,8 @@ export default function TaskDetail() {
         </div>
       </header>
 
-      {/* Tab Bar - Fixed (hidden in Review mode, only show Changes) */}
-      {task.status !== TaskStatus.Review && (
+      {/* Tab Bar - Fixed (hidden in Review and Done mode) */}
+      {task.status !== TaskStatus.Review && task.status !== TaskStatus.Done && (
         <div className="border-b border-border px-6 shrink-0 bg-background">
           <div className="flex gap-4">
             <button
@@ -622,7 +629,109 @@ export default function TaskDetail() {
 
       {/* Content */}
       <div className="flex-1 flex min-h-0">
-        {activeTab === 'chat' && task.status !== TaskStatus.Review ? (
+        {task.status === TaskStatus.Done ? (
+          /* Done Summary View */
+          <div className="flex-1 overflow-auto p-6">
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Completion Summary */}
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">Task Completed</h2>
+                    {task.completed_at && (
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(task.completed_at * 1000).toLocaleDateString()} at {new Date(task.completed_at * 1000).toLocaleTimeString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Commit Message */}
+                {task.diff_summary && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Commit Message</h3>
+                    <p className="text-foreground bg-muted/50 rounded-lg p-3 font-mono text-sm">
+                      {task.diff_summary.split('|')[0]}
+                    </p>
+                  </div>
+                )}
+
+                {/* Duration */}
+                {task.started_at && task.completed_at && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span>
+                      Duration: {(() => {
+                        const seconds = task.completed_at - task.started_at;
+                        if (seconds < 60) return `${seconds} seconds`;
+                        if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
+                        const hours = Math.floor(seconds / 3600);
+                        const mins = Math.floor((seconds % 3600) / 60);
+                        return `${hours}h ${mins}m`;
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Files Changed */}
+              {task.files_changed && task.files_changed.length > 0 && (
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                    <FileCode className="w-4 h-4" />
+                    Files Changed ({task.files_changed.length})
+                  </h3>
+                  <div className="space-y-1">
+                    {task.files_changed.map((file, index) => (
+                      <div
+                        key={index}
+                        className="text-sm text-muted-foreground font-mono py-1 px-2 bg-muted/30 rounded"
+                      >
+                        {file}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Commits */}
+              {task.diff_summary && task.diff_summary.includes('|') && (
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                    <GitCommit className="w-4 h-4" />
+                    Commits
+                  </h3>
+                  <div className="space-y-2">
+                    {task.diff_summary.split('|').slice(1).join('|').split('\n').filter(l => l.trim()).map((line, index) => {
+                      const parts = line.split('|');
+                      const hash = parts[0];
+                      const message = parts[1] || line;
+                      return (
+                        <div key={index} className="flex items-start gap-2 text-sm">
+                          <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
+                            {hash}
+                          </span>
+                          <span className="text-foreground">{message}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {task.description && (
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <h3 className="text-sm font-medium text-foreground mb-3">Description</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'chat' && task.status !== TaskStatus.Review ? (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Messages - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">

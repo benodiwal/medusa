@@ -1492,6 +1492,7 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
 #[tauri::command]
 pub async fn merge_task(task_id: String) -> Result<(), String> {
     use crate::git::GitManager;
+    use std::process::Command;
 
     info!("Merging task: {}", task_id);
 
@@ -1500,6 +1501,43 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
 
     let branch = task.branch.as_ref()
         .ok_or_else(|| "Task has no branch to merge".to_string())?;
+
+    let worktree_path = task.worktree_path.as_ref()
+        .ok_or_else(|| "Task has no worktree".to_string())?;
+
+    // Capture files changed and commits BEFORE cleanup
+    let files_output = Command::new("git")
+        .args(["diff", "--name-only", "main...HEAD"])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to get changed files: {}", e))?;
+
+    let files_changed: Vec<String> = String::from_utf8_lossy(&files_output.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.to_string())
+        .collect();
+
+    // Get commits (hash|message format)
+    let commits_output = Command::new("git")
+        .args(["log", "main..HEAD", "--pretty=format:%h|%s"])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("Failed to get commits: {}", e))?;
+
+    let commits_str = String::from_utf8_lossy(&commits_output.stdout).to_string();
+
+    // Create a summary with commit info
+    let diff_summary = if commits_str.is_empty() {
+        format!("{} files changed", files_changed.len())
+    } else {
+        // Format: first line is summary, rest are commits
+        let commit_lines: Vec<&str> = commits_str.lines().collect();
+        let first_commit_msg = commit_lines.first()
+            .and_then(|l| l.split('|').nth(1))
+            .unwrap_or("Changes merged");
+        format!("{}|{}", first_commit_msg, commits_str)
+    };
 
     let git = GitManager::new(task.project_path.clone())
         .map_err(|e| format!("Failed to open git repo: {}", e))?;
@@ -1516,16 +1554,17 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
     git.remove_worktree(&task_id)
         .map_err(|e| format!("Failed to remove worktree: {}", e))?;
 
-    // Update task status to Done
+    // Update task status to Done with captured info
     let conn = init_tasks_db()?;
     let now_ts = now();
+    let files_json = serde_json::to_string(&files_changed).unwrap_or_default();
 
     conn.execute(
-        "UPDATE kanban_tasks SET status = 'Done', completed_at = ?1, updated_at = ?2, worktree_path = NULL WHERE id = ?3",
-        params![now_ts, now_ts, task_id],
+        "UPDATE kanban_tasks SET status = 'Done', completed_at = ?1, updated_at = ?2, worktree_path = NULL, files_changed = ?3, diff_summary = ?4 WHERE id = ?5",
+        params![now_ts, now_ts, files_json, diff_summary, task_id],
     ).map_err(|e| format!("Failed to update task: {}", e))?;
 
-    info!("Task {} merged successfully", task_id);
+    info!("Task {} merged successfully with {} files changed", task_id, files_changed.len());
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-import { Clock, Play, Trash2, GitBranch, FolderOpen, Terminal, Eye, Pause, Send, Loader2 } from 'lucide-react';
+import { Clock, Play, Trash2, GitBranch, FolderOpen, Terminal, Eye, Pause, Send, Loader2, CheckCircle, FileCode } from 'lucide-react';
 import { Task, TaskStatus } from '../../types';
 
 interface TaskCardProps {
@@ -30,6 +30,23 @@ export function TaskCard({
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const getDuration = (startedAt?: number, completedAt?: number) => {
+    if (!startedAt || !completedAt) return null;
+    const seconds = completedAt - startedAt;
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    return `${Math.floor(seconds / 86400)}d`;
+  };
+
+  // Parse diff_summary to get commit message (format: "message|hash|msg\nhash|msg...")
+  const getCommitMessage = () => {
+    if (!task.diff_summary) return null;
+    const firstPipe = task.diff_summary.indexOf('|');
+    if (firstPipe === -1) return task.diff_summary;
+    return task.diff_summary.substring(0, firstPipe);
   };
 
   const getStatusColor = (status: TaskStatus) => {
@@ -214,12 +231,31 @@ export function TaskCard({
         </div>
       </div>
 
-      {/* Files changed for completed tasks */}
-      {task.status === TaskStatus.Done && task.files_changed && task.files_changed.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground">
-            {task.files_changed.length} file{task.files_changed.length !== 1 ? 's' : ''} changed
-          </p>
+      {/* Done task summary */}
+      {task.status === TaskStatus.Done && (
+        <div className="mt-3 pt-3 border-t border-border space-y-2">
+          {/* Commit message */}
+          {getCommitMessage() && (
+            <div className="flex items-start gap-2">
+              <CheckCircle className="w-3 h-3 text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-foreground line-clamp-2">{getCommitMessage()}</p>
+            </div>
+          )}
+          {/* Files and duration */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {task.files_changed && task.files_changed.length > 0 && (
+              <span className="flex items-center gap-1">
+                <FileCode className="w-3 h-3" />
+                {task.files_changed.length} file{task.files_changed.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {getDuration(task.started_at, task.completed_at) && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {getDuration(task.started_at, task.completed_at)}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
