@@ -180,12 +180,12 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
         return <Bot className="w-4 h-4 text-primary" />;
       case 'tool':
         return msg.isSuccess === false
-          ? <XCircle className="w-4 h-4 text-red-500" />
-          : <Wrench className="w-4 h-4 text-amber-500" />;
+          ? <XCircle className="w-4 h-4 text-destructive" />
+          : <Wrench className="w-4 h-4 text-muted-foreground" />;
       case 'result':
         return msg.isSuccess
-          ? <CheckCircle className="w-4 h-4 text-green-500" />
-          : <XCircle className="w-4 h-4 text-red-500" />;
+          ? <CheckCircle className="w-4 h-4 text-primary" />
+          : <XCircle className="w-4 h-4 text-destructive" />;
       case 'system':
         return <Terminal className="w-4 h-4 text-muted-foreground" />;
       default:
@@ -211,7 +211,7 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
               title={copied ? 'Copied!' : 'Copy output'}
             >
-              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
             </button>
             <button
               onClick={onClose}
@@ -226,7 +226,7 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
         {/* Output area */}
         <div
           ref={outputRef}
-          className="flex-1 overflow-auto p-4 bg-zinc-950"
+          className="flex-1 overflow-auto p-4 bg-card"
         >
           {messages.length === 0 ? (
             <div className="text-muted-foreground text-center py-8">
@@ -247,8 +247,8 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
                   className={`flex gap-3 ${
                     msg.type === 'result'
                       ? msg.isSuccess
-                        ? 'bg-green-500/10 border border-green-500/30 rounded-lg p-3'
-                        : 'bg-red-500/10 border border-red-500/30 rounded-lg p-3'
+                        ? 'bg-primary/10 border border-primary/30 rounded-lg p-3'
+                        : 'bg-destructive/10 border border-destructive/30 rounded-lg p-3'
                       : ''
                   }`}
                 >
@@ -257,16 +257,16 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     {msg.type === 'tool' && msg.toolName && (
-                      <div className="text-xs text-amber-500 font-medium mb-1">
+                      <div className="text-xs text-muted-foreground font-medium mb-1">
                         {msg.toolName}
                       </div>
                     )}
                     <div className={`text-sm whitespace-pre-wrap break-words ${
-                      msg.type === 'assistant' ? 'text-zinc-200' :
-                      msg.type === 'tool' ? 'text-zinc-400 font-mono text-xs' :
-                      msg.type === 'result' ? (msg.isSuccess ? 'text-green-400' : 'text-red-400') :
-                      msg.type === 'system' ? 'text-zinc-500 text-xs' :
-                      'text-zinc-400'
+                      msg.type === 'assistant' ? 'text-foreground' :
+                      msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' :
+                      msg.type === 'result' ? (msg.isSuccess ? 'text-primary' : 'text-destructive') :
+                      msg.type === 'system' ? 'text-muted-foreground text-xs' :
+                      'text-muted-foreground'
                     }`}>
                       {msg.content}
                     </div>
@@ -283,7 +283,7 @@ export function AgentOutputModal({ task, onClose }: AgentOutputModalProps) {
             <span>{messages.length} messages</span>
             {task.agent_pid && (
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                 Agent running (PID: {task.agent_pid})
               </span>
             )}
