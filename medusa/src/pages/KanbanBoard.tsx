@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Settings, RefreshCw, Search, X, Clock, Copy, Check, ExternalLink, ListTodo } from 'lucide-react';
+import { Settings, RefreshCw, Search, X, Clock, Copy, Check, ExternalLink, ArrowLeft } from 'lucide-react';
 import { PlanItem, PlanStatus } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
@@ -184,13 +184,25 @@ export default function KanbanBoard() {
       {/* Header */}
       <header className="border-b border-border px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src="/medusa-logo.png"
-              alt="Medusa"
-              className="w-7 h-7 object-contain"
-            />
-            <h1 className="text-base font-semibold text-foreground">Medusa</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-2">
+              <img
+                src="/medusa-logo.png"
+                alt="Medusa"
+                className="w-7 h-7 object-contain"
+              />
+              <h1 className="text-base font-semibold text-foreground">Plans</h1>
+            </div>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              {plans.length} plans
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -227,13 +239,6 @@ export default function KanbanBoard() {
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => navigate('/tasks')}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              title="Tasks"
-            >
-              <ListTodo className="w-4 h-4" />
             </button>
             <button
               onClick={() => navigate('/history')}

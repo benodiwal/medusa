@@ -202,7 +202,7 @@ export default function Tasks() {
             <button
               onClick={() => navigate('/')}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              title="Back"
+              title="Back to Dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>

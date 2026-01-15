@@ -351,7 +351,7 @@ export default function TaskDetail() {
     if (!confirm(`Merge branch "${task.branch}" into main and mark task as done?`)) return;
     try {
       await invoke('merge_task', { taskId: task.id });
-      navigate('/tasks');
+      navigate('/');
     } catch (error) {
       console.error('Failed to merge:', error);
       alert(`Failed to merge: ${error}`);
@@ -363,7 +363,7 @@ export default function TaskDetail() {
     if (!confirm('Reject this task? All changes will be discarded and the worktree will be removed.')) return;
     try {
       await invoke('reject_task', { taskId: task.id });
-      navigate('/tasks');
+      navigate('/');
     } catch (error) {
       console.error('Failed to reject:', error);
       alert(`Failed to reject: ${error}`);
@@ -446,7 +446,7 @@ export default function TaskDetail() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Task not found</p>
-          <button onClick={() => navigate('/tasks')} className="text-primary hover:underline">
+          <button onClick={() => navigate('/')} className="text-primary hover:underline">
             Back to Tasks
           </button>
         </div>
@@ -468,7 +468,7 @@ export default function TaskDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/tasks')}
+              onClick={() => navigate('/')}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
