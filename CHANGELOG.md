@@ -2,6 +2,34 @@
 
 All notable changes to Medusa will be documented in this file.
 
+## [0.2.0] - 2026-01-15
+
+### Added
+
+- **Tasks** - Create tasks and run Claude Code agents autonomously on isolated git branches
+- **Unified Kanban** - Plans and tasks in one board with Backlog, In Progress, Review, and Done columns
+- **Git Worktrees** - Each task runs on its own git worktree, keeping branches isolated from main
+- **Parallel Agents** - Run multiple Claude Code instances simultaneously without conflicts
+- **Agent Chat** - Monitor agent output in real-time and send follow-up messages
+- **Code Diff Review** - Review file-by-file changes before merging with syntax highlighting
+- **One-click Merge** - Merge completed task branches into main with a single click
+- **Task Detail Page** - View agent output, commit history, and diffs in a dedicated view
+- **Commit Editing** - Update commit messages before merging
+
+### Changed
+
+- Redesigned home screen with unified kanban replacing separate plans view
+- Updated landing page to highlight both Plans and Tasks workflows
+- Refreshed documentation with Tasks quick start guide
+- New screenshots showcasing unified workflow
+
+### Technical
+
+- Added `task_agent.rs` for Claude Code process management
+- Git worktree management via Rust commands
+- Stream-based agent output using `--output-format stream-json`
+- SQLite migrations for tasks table
+
 ## [0.1.2] - 2026-01-13
 
 ### Added
