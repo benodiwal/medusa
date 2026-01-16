@@ -2,6 +2,21 @@
 
 All notable changes to Medusa will be documented in this file.
 
+## [0.2.2] - 2026-01-16
+
+### Added
+
+- **Base Branch Tracking** - Tasks now remember which branch they were created from and merge back to it
+- **Base Commit Tracking** - Accurate diffs showing only agent changes, not inherited branch commits
+- **Plan Mode Timeout Setting** - Configurable timeout (5-60 minutes) for plan approval in Settings
+
+### Fixed
+
+- **Merge Target** - Tasks now merge back to their original branch instead of current branch
+- **Branch Cleanup** - Task branches are now deleted after merge (previously left behind)
+- **Diff Accuracy** - Commits and file diffs now show only agent's work, not parent branch changes
+- **Plan Mode Timeout** - Hook script now respects the configured timeout setting
+
 ## [0.2.1] - 2026-01-16
 
 ### Added

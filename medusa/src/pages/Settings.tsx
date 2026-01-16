@@ -385,8 +385,8 @@ const Settings = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Plan review tool for Claude Code. Review, annotate, and approve or deny
-                implementation plans from multiple Claude Code sessions.
+                Task runner and plan review tool for Claude Code. Run autonomous agents on
+                isolated branches, review diffs, and approve plans before execution.
               </p>
             </div>
           </div>
