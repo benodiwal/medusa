@@ -31,7 +31,7 @@ export function SetupBanner() {
     return `Missing: ${missing.join(', ')}`;
   };
 
-  const docsUrl = 'https://github.com/benodiwal/medusa#setup-plans-workflow';
+  const docsUrl = 'https://www.heymedusa.net/docs';
 
   return (
     <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2.5">
