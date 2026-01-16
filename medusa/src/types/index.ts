@@ -139,6 +139,8 @@ export interface Task {
   // Execution tracking
   agent_pid?: number;
   session_id?: string;  // Claude Code session ID for resuming
+  base_commit?: string; // The commit the worktree was created from (for accurate diffs)
+  base_branch?: string; // The branch the task was created from (for merging back)
   started_at?: number;
   completed_at?: number;
 

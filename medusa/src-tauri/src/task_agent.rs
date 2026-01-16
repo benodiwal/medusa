@@ -143,6 +143,8 @@ pub struct TaskAgentInfo {
     pub status: TaskAgentStatus,
     pub worktree_path: String,
     pub branch: String,
+    pub base_commit: String, // The commit the worktree was created from (for accurate diffs)
+    pub base_branch: String, // The branch the task was created from (for merging back)
     pub started_at: i64,
     pub output_lines: Vec<String>,
 }
@@ -206,6 +208,14 @@ impl TaskAgentManager {
 
         // Create git manager and worktree
         let git = GitManager::new(project_path.to_string())?;
+
+        // IMPORTANT: Capture the current HEAD commit and branch BEFORE creating the worktree
+        // base_commit is used for accurate diffs (only shows agent's changes)
+        // base_branch is used to merge back to the original branch
+        let base_commit = git.get_current_commit_hash()?;
+        let base_branch = git.current_branch()?;
+        info!("Base commit for task {}: {} (branch: {})", task_id, base_commit, base_branch);
+
         let worktree_path = git.create_worktree(task_id, &branch_name)?;
 
         info!("Created worktree at {:?} on branch {}", worktree_path, branch_name);
@@ -216,6 +226,8 @@ impl TaskAgentManager {
             project_path,
             &worktree_path.to_string_lossy(),
             &branch_name,
+            &base_commit,
+            &base_branch,
             initial_prompt,
             app_handle,
         );
@@ -238,6 +250,8 @@ impl TaskAgentManager {
         _project_path: &str,
         worktree_path: &str,
         branch_name: &str,
+        base_commit: &str,
+        base_branch: &str,
         initial_prompt: &str,
         app_handle: AppHandle,
     ) -> Result<TaskAgentInfo> {
@@ -293,6 +307,8 @@ impl TaskAgentManager {
             status: TaskAgentStatus::Running,
             worktree_path: worktree_path.to_string(),
             branch: branch_name.to_string(),
+            base_commit: base_commit.to_string(),
+            base_branch: base_branch.to_string(),
             started_at: chrono::Utc::now().timestamp(),
             output_lines: Vec::new(),
         };

@@ -866,6 +866,8 @@ pub struct KanbanTask {
     pub plan_id: Option<String>,
     pub agent_pid: Option<u32>,
     pub session_id: Option<String>,  // Claude Code session ID for resuming
+    pub base_commit: Option<String>, // The commit the worktree was created from (for accurate diffs)
+    pub base_branch: Option<String>, // The branch the task was created from (for merging back)
     pub started_at: Option<u64>,
     pub completed_at: Option<u64>,
     pub files_changed: Option<Vec<String>>,
@@ -936,6 +938,18 @@ fn init_tasks_db() -> Result<Connection, String> {
         [],
     ).ok(); // Ignore error if column already exists
 
+    // Migration: add base_commit column if it doesn't exist
+    conn.execute(
+        "ALTER TABLE kanban_tasks ADD COLUMN base_commit TEXT",
+        [],
+    ).ok(); // Ignore error if column already exists
+
+    // Migration: add base_branch column if it doesn't exist
+    conn.execute(
+        "ALTER TABLE kanban_tasks ADD COLUMN base_branch TEXT",
+        [],
+    ).ok(); // Ignore error if column already exists
+
     // Create indexes
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_kanban_tasks_status ON kanban_tasks(status)",
@@ -970,6 +984,8 @@ pub async fn create_task(request: CreateTaskRequest) -> Result<KanbanTask, Strin
         plan_id: None,
         agent_pid: None,
         session_id: None,
+        base_commit: None,
+        base_branch: None,
         started_at: None,
         completed_at: None,
         files_changed: None,
@@ -997,13 +1013,13 @@ pub async fn get_all_tasks() -> Result<Vec<KanbanTask>, String> {
 
     let mut stmt = conn.prepare(
         "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
-                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+                agent_pid, session_id, base_commit, base_branch, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
          FROM kanban_tasks ORDER BY created_at DESC"
     ).map_err(|e| format!("Failed to prepare query: {}", e))?;
 
     let tasks_iter = stmt.query_map([], |row| {
         let status_str: String = row.get(3)?;
-        let files_changed_str: Option<String> = row.get(12)?;
+        let files_changed_str: Option<String> = row.get(14)?;
         let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
 
         Ok(KanbanTask {
@@ -1017,12 +1033,14 @@ pub async fn get_all_tasks() -> Result<Vec<KanbanTask>, String> {
             plan_id: row.get(7)?,
             agent_pid: row.get(8)?,
             session_id: row.get(9)?,
-            started_at: row.get(10)?,
-            completed_at: row.get(11)?,
+            base_commit: row.get(10)?,
+            base_branch: row.get(11)?,
+            started_at: row.get(12)?,
+            completed_at: row.get(13)?,
             files_changed,
-            diff_summary: row.get(13)?,
-            created_at: row.get(14)?,
-            updated_at: row.get(15)?,
+            diff_summary: row.get(15)?,
+            created_at: row.get(16)?,
+            updated_at: row.get(17)?,
         })
     }).map_err(|e| format!("Failed to query tasks: {}", e))?;
 
@@ -1046,12 +1064,12 @@ pub async fn get_task(id: String) -> Result<Option<KanbanTask>, String> {
 
     let result = conn.query_row(
         "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
-                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+                agent_pid, session_id, base_commit, base_branch, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
          FROM kanban_tasks WHERE id = ?1",
         params![id],
         |row| {
             let status_str: String = row.get(3)?;
-            let files_changed_str: Option<String> = row.get(12)?;
+            let files_changed_str: Option<String> = row.get(14)?;
             let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
 
             Ok(KanbanTask {
@@ -1065,12 +1083,14 @@ pub async fn get_task(id: String) -> Result<Option<KanbanTask>, String> {
                 plan_id: row.get(7)?,
                 agent_pid: row.get(8)?,
                 session_id: row.get(9)?,
-                started_at: row.get(10)?,
-                completed_at: row.get(11)?,
+                base_commit: row.get(10)?,
+                base_branch: row.get(11)?,
+                started_at: row.get(12)?,
+                completed_at: row.get(13)?,
                 files_changed,
-                diff_summary: row.get(13)?,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
+                diff_summary: row.get(15)?,
+                created_at: row.get(16)?,
+                updated_at: row.get(17)?,
             })
         },
     );
@@ -1183,13 +1203,13 @@ pub async fn get_tasks_by_project(project_path: String) -> Result<Vec<KanbanTask
 
     let mut stmt = conn.prepare(
         "SELECT id, title, description, status, project_path, branch, worktree_path, plan_id,
-                agent_pid, session_id, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
+                agent_pid, session_id, base_commit, base_branch, started_at, completed_at, files_changed, diff_summary, created_at, updated_at
          FROM kanban_tasks WHERE project_path = ?1 ORDER BY created_at DESC"
     ).map_err(|e| format!("Failed to prepare query: {}", e))?;
 
     let tasks_iter = stmt.query_map(params![project_path], |row| {
         let status_str: String = row.get(3)?;
-        let files_changed_str: Option<String> = row.get(12)?;
+        let files_changed_str: Option<String> = row.get(14)?;
         let files_changed = files_changed_str.and_then(|s| serde_json::from_str(&s).ok());
 
         Ok(KanbanTask {
@@ -1203,12 +1223,14 @@ pub async fn get_tasks_by_project(project_path: String) -> Result<Vec<KanbanTask
             plan_id: row.get(7)?,
             agent_pid: row.get(8)?,
             session_id: row.get(9)?,
-            started_at: row.get(10)?,
-            completed_at: row.get(11)?,
+            base_commit: row.get(10)?,
+            base_branch: row.get(11)?,
+            started_at: row.get(12)?,
+            completed_at: row.get(13)?,
             files_changed,
-            diff_summary: row.get(13)?,
-            created_at: row.get(14)?,
-            updated_at: row.get(15)?,
+            diff_summary: row.get(15)?,
+            created_at: row.get(16)?,
+            updated_at: row.get(17)?,
         })
     }).map_err(|e| format!("Failed to query tasks: {}", e))?;
 
@@ -1260,13 +1282,17 @@ pub async fn start_task_agent(
             agent_pid = ?1,
             branch = ?2,
             worktree_path = ?3,
-            started_at = ?4,
-            updated_at = ?5
-         WHERE id = ?6",
+            base_commit = ?4,
+            base_branch = ?5,
+            started_at = ?6,
+            updated_at = ?7
+         WHERE id = ?8",
         params![
             agent_info.pid,
             agent_info.branch,
             agent_info.worktree_path,
+            agent_info.base_commit,
+            agent_info.base_branch,
             now_ts,
             now_ts,
             task_id
@@ -1377,15 +1403,10 @@ pub async fn get_task_changed_files(task_id: String) -> Result<Vec<String>, Stri
     let git = GitManager::new(task.project_path)
         .map_err(|e| format!("Failed to open git repo: {}", e))?;
 
-    // For Review status, show committed changes vs main branch
-    // For other statuses, show uncommitted changes
-    if task.status == TaskStatus::Review {
-        git.get_worktree_changed_files_vs_main(&task_id)
-            .map_err(|e| format!("Failed to get changed files: {}", e))
-    } else {
-        git.get_worktree_changed_files(&task_id)
-            .map_err(|e| format!("Failed to get changed files: {}", e))
-    }
+    // Show changes vs the base commit (the commit the worktree was created from)
+    // This shows ONLY what the agent changed, not inherited changes from parent branch
+    git.get_worktree_all_changes_vs_base(&task_id, task.base_commit.as_deref())
+        .map_err(|e| format!("Failed to get changed files: {}", e))
 }
 
 /// Send a message to a running agent
@@ -1413,68 +1434,21 @@ pub async fn has_active_agent_session(task_id: String) -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<String, String> {
     use crate::git::GitManager;
-    use std::process::Command;
-    use std::fs;
-    use std::path::Path;
 
     let task = get_task(task_id.clone()).await?
         .ok_or_else(|| format!("Task not found: {}", task_id))?;
 
-    let worktree_path = task.worktree_path.as_ref()
-        .ok_or_else(|| "Task has no worktree".to_string())?;
-
-    // For Review status, use GitManager to get diff vs main (handles main/master detection)
-    if task.status == TaskStatus::Review {
-        let git = GitManager::new(task.project_path)
-            .map_err(|e| format!("Failed to open git repo: {}", e))?;
-
-        return git.get_file_diff_vs_main(&task_id, &file_path)
-            .map_err(|e| format!("Failed to get diff: {}", e));
+    if task.worktree_path.is_none() {
+        return Err("Task has no worktree".to_string());
     }
 
-    // For non-Review status, show uncommitted changes vs HEAD
-    let full_file_path = Path::new(&worktree_path).join(&file_path);
+    let git = GitManager::new(task.project_path)
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
 
-    let output = Command::new("git")
-        .args(["diff", "HEAD", "--", &file_path])
-        .current_dir(worktree_path)
-        .output()
-        .map_err(|e| format!("Failed to run git diff: {}", e))?;
-
-    let diff_output = String::from_utf8_lossy(&output.stdout).to_string();
-
-    // If diff is empty, check if it's a new untracked file
-    if diff_output.trim().is_empty() && full_file_path.exists() {
-        // Check if file is untracked
-        let status_output = Command::new("git")
-            .args(["ls-files", "--others", "--exclude-standard", "--", &file_path])
-            .current_dir(worktree_path)
-            .output()
-            .map_err(|e| format!("Failed to check file status: {}", e))?;
-
-        let is_untracked = !String::from_utf8_lossy(&status_output.stdout).trim().is_empty();
-
-        if is_untracked {
-            // Read file content and format as new file diff
-            let content = fs::read_to_string(&full_file_path)
-                .map_err(|e| format!("Failed to read file: {}", e))?;
-
-            let lines: Vec<&str> = content.lines().collect();
-            let mut diff = format!("diff --git a/{} b/{}\n", file_path, file_path);
-            diff.push_str("new file mode 100644\n");
-            diff.push_str("--- /dev/null\n");
-            diff.push_str(&format!("+++ b/{}\n", file_path));
-            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", lines.len()));
-
-            for line in lines {
-                diff.push_str(&format!("+{}\n", line));
-            }
-
-            return Ok(diff);
-        }
-    }
-
-    Ok(diff_output)
+    // Show diff vs the base commit (the commit the worktree was created from)
+    // This shows ONLY what the agent changed, not inherited changes from parent branch
+    git.get_file_diff_vs_base(&task_id, &file_path, task.base_commit.as_deref())
+        .map_err(|e| format!("Failed to get diff: {}", e))
 }
 
 /// Merge a task's worktree branch into main and mark as done
@@ -1497,13 +1471,21 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
     let git = GitManager::new(task.project_path.clone())
         .map_err(|e| format!("Failed to open git repo: {}", e))?;
 
-    // Get the main branch name (handles main vs master)
-    let main_branch = git.get_main_branch_name()
-        .map_err(|e| format!("Failed to detect main branch: {}", e))?;
+    // Determine the target branch for merge:
+    // - Use base_branch if available (the branch the task was created from)
+    // - Fall back to current branch for old tasks without base_branch
+    let target_branch = match &task.base_branch {
+        Some(branch) => branch.clone(),
+        None => git.current_branch()
+            .map_err(|e| format!("Failed to get current branch: {}", e))?,
+    };
+
+    // Use base_commit for accurate file/commit stats, fall back to target_branch
+    let base_ref = task.base_commit.as_deref().unwrap_or(&target_branch);
 
     // Capture files changed and commits BEFORE cleanup
     let files_output = Command::new("git")
-        .args(["diff", "--name-only", &format!("{}...HEAD", main_branch)])
+        .args(["diff", "--name-only", &format!("{}...HEAD", base_ref)])
         .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to get changed files: {}", e))?;
@@ -1516,7 +1498,7 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
 
     // Get commits (hash|message format)
     let commits_output = Command::new("git")
-        .args(["log", &format!("{}..HEAD", main_branch), "--pretty=format:%h|%s"])
+        .args(["log", &format!("{}..HEAD", base_ref), "--pretty=format:%h|%s"])
         .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to get commits: {}", e))?;
@@ -1535,17 +1517,18 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
         format!("{}|{}", first_commit_msg, commits_str)
     };
 
-    // Get the current branch to return to after merge
-    let current_branch = git.current_branch()
-        .map_err(|e| format!("Failed to get current branch: {}", e))?;
+    info!("Merging task branch {} into {}", branch, target_branch);
 
-    // Merge the task branch into current branch (usually main)
-    git.merge(branch, &current_branch)
+    // Merge the task branch into the target branch (the branch it was created from)
+    git.merge(branch, &target_branch)
         .map_err(|e| format!("Failed to merge: {}", e))?;
 
     // Clean up worktree
     git.remove_worktree(&task_id)
         .map_err(|e| format!("Failed to remove worktree: {}", e))?;
+
+    // Delete the task branch (commits are now in target branch)
+    let _ = git.delete_branch(branch); // Ignore error if branch doesn't exist
 
     // Update task status to Done with captured info
     let conn = init_tasks_db()?;
@@ -1741,19 +1724,22 @@ pub async fn get_task_commits(task_id: String) -> Result<Vec<TaskCommit>, String
     let worktree_path = task.worktree_path.as_ref()
         .ok_or_else(|| "Task has no worktree".to_string())?;
 
-    let git = GitManager::new(task.project_path)
+    let git = GitManager::new(task.project_path.clone())
         .map_err(|e| format!("Failed to open git repo: {}", e))?;
 
-    // Get the main branch name (handles main vs master)
-    let main_branch = git.get_main_branch_name()
-        .map_err(|e| format!("Failed to detect main branch: {}", e))?;
+    // Use base_commit if available, otherwise fall back to main branch
+    let base_ref = match &task.base_commit {
+        Some(commit) => commit.clone(),
+        None => git.get_main_branch_name()
+            .map_err(|e| format!("Failed to detect main branch: {}", e))?,
+    };
 
-    // Get commits on this branch that aren't on main
+    // Get commits on this branch since the base commit
     // Format: hash|short_hash|message|author|date
     let output = Command::new("git")
         .args([
             "log",
-            &format!("{}..HEAD", main_branch),
+            &format!("{}..HEAD", base_ref),
             "--pretty=format:%H|%h|%s|%an|%ar",
         ])
         .current_dir(worktree_path)

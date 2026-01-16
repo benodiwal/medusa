@@ -42,6 +42,20 @@ impl GitManager {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
+    /// Get the current HEAD commit hash (full 40-char hash)
+    pub fn get_current_commit_hash(&self) -> Result<String> {
+        let output = Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(&self.repo_path)
+            .output()?;
+
+        if !output.status.success() {
+            return Err(anyhow::anyhow!("Failed to get current commit hash"));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
     pub fn create_branch(&self, branch_name: &str) -> Result<()> {
         let output = Command::new("git")
             .args(["branch", branch_name])
@@ -405,6 +419,110 @@ impl GitManager {
 
         files.sort();
         Ok(files)
+    }
+
+    /// Get ALL changed files compared to a base commit (both committed AND uncommitted)
+    /// This shows only changes made in the worktree since it was created from base_commit
+    pub fn get_worktree_all_changes_vs_base(&self, task_id: &str, base_commit: Option<&str>) -> Result<Vec<String>> {
+        let worktree_path = self.worktrees_dir().join(task_id);
+
+        if !worktree_path.exists() {
+            return Err(anyhow::anyhow!("Worktree not found"));
+        }
+
+        // Use base_commit if provided, otherwise fall back to main branch
+        let base = match base_commit {
+            Some(commit) => commit.to_string(),
+            None => self.get_main_branch_name()?,
+        };
+
+        let mut files = std::collections::HashSet::new();
+
+        // Get all changes (committed + uncommitted) vs the base
+        // Using two-dot notation compares working tree directly to base
+        let output = Command::new("git")
+            .args(["diff", "--name-only", &base])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        if output.status.success() {
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                if !line.is_empty() {
+                    files.insert(line.to_string());
+                }
+            }
+        }
+
+        // Get untracked (new) files - these won't show in git diff
+        let output = Command::new("git")
+            .args(["ls-files", "--others", "--exclude-standard"])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        if output.status.success() {
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                if !line.is_empty() {
+                    files.insert(line.to_string());
+                }
+            }
+        }
+
+        let mut result: Vec<String> = files.into_iter().collect();
+        result.sort();
+        Ok(result)
+    }
+
+    /// Get file diff vs a base commit including both committed AND uncommitted changes
+    pub fn get_file_diff_vs_base(&self, task_id: &str, file_path: &str, base_commit: Option<&str>) -> Result<String> {
+        let worktree_path = self.worktrees_dir().join(task_id);
+
+        if !worktree_path.exists() {
+            return Err(anyhow::anyhow!("Worktree not found"));
+        }
+
+        // Use base_commit if provided, otherwise fall back to main branch
+        let base = match base_commit {
+            Some(commit) => commit.to_string(),
+            None => self.get_main_branch_name()?,
+        };
+
+        // Use git diff base to compare working tree directly to base commit
+        // This includes both committed and uncommitted changes
+        let output = Command::new("git")
+            .args(["diff", &base, "--", file_path])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        if output.status.success() && !output.stdout.is_empty() {
+            return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+        }
+
+        // Check if it's a new file (not in base at all)
+        let file_full_path = worktree_path.join(file_path);
+        if file_full_path.exists() {
+            // Check if file exists in base
+            let check_base = Command::new("git")
+                .args(["cat-file", "-e", &format!("{}:{}", base, file_path)])
+                .current_dir(&worktree_path)
+                .output()?;
+
+            if !check_base.status.success() {
+                // File doesn't exist in base, show as new file
+                let content = std::fs::read_to_string(&file_full_path)?;
+                let lines: Vec<&str> = content.lines().collect();
+                let diff = format!(
+                    "diff --git a/{} b/{}\nnew file mode 100644\n--- /dev/null\n+++ b/{}\n@@ -0,0 +1,{} @@\n{}",
+                    file_path,
+                    file_path,
+                    file_path,
+                    lines.len(),
+                    lines.iter().map(|l| format!("+{}", l)).collect::<Vec<_>>().join("\n")
+                );
+                return Ok(diff);
+            }
+        }
+
+        Ok(String::new())
     }
 
     /// Get the main branch name (main or master)
