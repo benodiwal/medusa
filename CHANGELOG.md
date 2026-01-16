@@ -2,6 +2,29 @@
 
 All notable changes to Medusa will be documented in this file.
 
+## [0.2.1] - 2026-01-16
+
+### Added
+
+- **Auto Setup** - Automatic hook configuration on app startup for plan mode
+- **Diff with Main** - Compare task branch changes against main branch
+- **Preview Modal** - View completed tasks and approved plans in read-only preview mode
+- **Markdown Parser** - Rich rendering of Claude Code agent output with syntax highlighting
+- **Dynamic Version** - Settings page now displays version automatically from app config
+
+### Fixed
+
+- **Done Items Read-only** - Completed tasks and approved plans can no longer be opened for editing
+- **Hook Script Permissions** - Setup now checks and ensures hook script has executable permissions
+- **Tauri Dialog** - Use native Tauri dialogs instead of browser confirm for proper async handling
+- **Memory Limits** - Added memory limits and worktree health checks
+- **Event Listener Cleanup** - Improved cleanup to prevent memory leaks
+- **Task Race Conditions** - Added pre-flight checks and conflict handling for tasks
+
+### Changed
+
+- Updated docs link in setup banner to heymedusa.net/docs
+
 ## [0.2.0] - 2026-01-15
 
 ### Added
