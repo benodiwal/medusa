@@ -9,6 +9,7 @@ interface TaskCardProps {
   onStopAgent?: () => void;
   onSendToReview?: () => void;
   onViewOutput?: () => void;
+  onPreview?: () => void;
   isDragging?: boolean;
   isCommitting?: boolean;
 }
@@ -21,6 +22,7 @@ export function TaskCard({
   onStopAgent,
   onSendToReview,
   onViewOutput,
+  onPreview,
   isDragging,
   isCommitting,
 }: TaskCardProps) {
@@ -132,7 +134,9 @@ export function TaskCard({
           <span>{getTimeAgo(task.created_at)}</span>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className={`flex items-center gap-1 transition-opacity ${
+          task.status === TaskStatus.Done ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
           {/* Start Agent button - shown for backlog tasks */}
           {canStart && !isRunning && onStartAgent && (
             <button
@@ -212,6 +216,20 @@ export function TaskCard({
               }}
               className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
               title="View Changes"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Preview button - shown for done tasks */}
+          {task.status === TaskStatus.Done && onPreview && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview();
+              }}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+              title="View Details"
             >
               <Eye className="w-3.5 h-3.5" />
             </button>

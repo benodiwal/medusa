@@ -1119,6 +1119,14 @@ pub async fn update_task(request: UpdateTaskRequest) -> Result<KanbanTask, Strin
 pub async fn update_task_status(id: String, status: TaskStatus) -> Result<KanbanTask, String> {
     info!("Updating task {} status to {:?}", id, status);
 
+    // Check if task exists and is not already Done (Done tasks are read-only)
+    let existing = get_task(id.clone()).await?;
+    if let Some(ref task) = existing {
+        if task.status == TaskStatus::Done {
+            return Err("Cannot update a completed task. Done tasks are read-only.".to_string());
+        }
+    }
+
     let conn = init_tasks_db()?;
     let now_ts = now();
 

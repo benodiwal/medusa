@@ -1,15 +1,16 @@
-import { Clock, ExternalLink, Trash2, Check, X } from 'lucide-react';
+import { Clock, ExternalLink, Trash2, Check, X, Eye } from 'lucide-react';
 import { PlanItem, PlanStatus } from '../../types';
 
 interface PlanCardProps {
   plan: PlanItem;
   onOpen?: () => void;
   onRemove: () => void;
+  onPreview?: () => void;
   isActive?: boolean;
   isCompleted?: boolean;
 }
 
-export function PlanCard({ plan, onOpen, onRemove, isActive, isCompleted }: PlanCardProps) {
+export function PlanCard({ plan, onOpen, onRemove, onPreview, isActive, isCompleted }: PlanCardProps) {
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor(Date.now() / 1000 - timestamp);
     if (seconds < 60) return 'just now';
@@ -64,7 +65,9 @@ export function PlanCard({ plan, onOpen, onRemove, isActive, isCompleted }: Plan
           <span>{getTimeAgo(plan.created_at)}</span>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className={`flex items-center gap-1 transition-opacity ${
+          isCompleted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
           {!isCompleted && onOpen && (
             <button
               onClick={(e) => {
@@ -75,6 +78,18 @@ export function PlanCard({ plan, onOpen, onRemove, isActive, isCompleted }: Plan
               title="Open"
             >
               <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {isCompleted && onPreview && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview();
+              }}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+              title="View Details"
+            >
+              <Eye className="w-3.5 h-3.5" />
             </button>
           )}
           <button

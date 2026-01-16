@@ -25,7 +25,8 @@ import {
 import { PlanItem, PlanStatus, Task, TaskStatus } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
-import { CreateTaskModal, AgentOutputModal } from '../components/tasks';
+import { CreateTaskModal, AgentOutputModal, TaskPreviewModal } from '../components/tasks';
+import { HistoryPreviewModal } from '../components/history';
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 import { ask } from '@tauri-apps/plugin-dialog';
 
@@ -56,6 +57,8 @@ export default function UnifiedKanban() {
   const [selectedPlan, setSelectedPlan] = useState<PlanItem | null>(null);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [outputTask, setOutputTask] = useState<Task | null>(null);
+  const [previewTask, setPreviewTask] = useState<Task | null>(null);
+  const [previewPlan, setPreviewPlan] = useState<PlanItem | null>(null);
   const [committingTaskId, setCommittingTaskId] = useState<string | null>(null);
 
   // Notifications
@@ -440,30 +443,37 @@ export default function UnifiedKanban() {
 
                 {/* Items */}
                 <div className="space-y-3">
-                  {items.map((item) => (
-                    item.type === 'plan' ? (
+                  {items.map((item) => {
+                    const plan = item.type === 'plan' ? item.data as PlanItem : null;
+                    const task = item.type === 'task' ? item.data as Task : null;
+                    const isApprovedPlan = plan?.status === PlanStatus.Approved;
+                    const isDoneTask = task?.status === TaskStatus.Done;
+
+                    return item.type === 'plan' ? (
                       <PlanCard
-                        key={`plan-${(item.data as PlanItem).id}`}
-                        plan={item.data as PlanItem}
-                        onOpen={() => handleOpenPlan(item.data as PlanItem)}
-                        onRemove={() => handleRemovePlan((item.data as PlanItem).id)}
-                        isActive={(item.data as PlanItem).status === PlanStatus.InReview}
-                        isCompleted={(item.data as PlanItem).status === PlanStatus.Approved}
+                        key={`plan-${plan!.id}`}
+                        plan={plan!}
+                        onOpen={isApprovedPlan ? undefined : () => handleOpenPlan(plan!)}
+                        onRemove={() => handleRemovePlan(plan!.id)}
+                        onPreview={isApprovedPlan ? () => setPreviewPlan(plan!) : undefined}
+                        isActive={plan!.status === PlanStatus.InReview}
+                        isCompleted={isApprovedPlan}
                       />
                     ) : (
                       <TaskCardInline
-                        key={`task-${(item.data as Task).id}`}
-                        task={item.data as Task}
-                        onOpen={() => navigate(`/tasks/${(item.data as Task).id}`)}
-                        onDelete={() => handleDeleteTask((item.data as Task).id)}
-                        onStartAgent={() => handleStartAgent(item.data as Task)}
-                        onStopAgent={() => handleStopAgent(item.data as Task)}
-                        onSendToReview={() => handleSendToReview(item.data as Task)}
-                        onViewOutput={() => setOutputTask(item.data as Task)}
-                        isCommitting={committingTaskId === (item.data as Task).id}
+                        key={`task-${task!.id}`}
+                        task={task!}
+                        onOpen={isDoneTask ? undefined : () => navigate(`/tasks/${task!.id}`)}
+                        onDelete={() => handleDeleteTask(task!.id)}
+                        onStartAgent={() => handleStartAgent(task!)}
+                        onStopAgent={() => handleStopAgent(task!)}
+                        onSendToReview={() => handleSendToReview(task!)}
+                        onViewOutput={() => setOutputTask(task!)}
+                        onPreview={isDoneTask ? () => setPreviewTask(task!) : undefined}
+                        isCommitting={committingTaskId === task!.id}
                       />
-                    )
-                  ))}
+                    );
+                  })}
 
                   {items.length === 0 && (
                     <div className="border border-dashed border-border rounded-lg p-6 text-center">
@@ -507,6 +517,30 @@ export default function UnifiedKanban() {
           onClose={() => setOutputTask(null)}
         />
       )}
+
+      {previewTask && (
+        <TaskPreviewModal
+          task={previewTask}
+          onClose={() => setPreviewTask(null)}
+        />
+      )}
+
+      {previewPlan && (
+        <HistoryPreviewModal
+          item={{
+            id: previewPlan.id,
+            content: previewPlan.content,
+            project_name: previewPlan.project_name,
+            source: previewPlan.source,
+            status: previewPlan.status === PlanStatus.Approved ? 'approved' : 'rejected',
+            feedback: previewPlan.feedback,
+            annotations: previewPlan.annotations,
+            created_at: previewPlan.created_at,
+            completed_at: previewPlan.created_at,
+          }}
+          onClose={() => setPreviewPlan(null)}
+        />
+      )}
     </div>
   );
 }
@@ -520,15 +554,17 @@ function TaskCardInline({
   onStopAgent,
   onSendToReview,
   onViewOutput,
+  onPreview,
   isCommitting,
 }: {
   task: Task;
-  onOpen: () => void;
+  onOpen?: () => void;
   onDelete: () => void;
   onStartAgent: () => void;
   onStopAgent: () => void;
   onSendToReview: () => void;
   onViewOutput: () => void;
+  onPreview?: () => void;
   isCommitting: boolean;
 }) {
   const getTimeAgo = (timestamp: number) => {
@@ -561,12 +597,14 @@ function TaskCardInline({
   const canStart = task.status === TaskStatus.Backlog;
   const canResume = isPaused;
 
+  const isDone = task.status === TaskStatus.Done;
+
   return (
     <div
-      className={`group relative bg-card border rounded-lg p-4 transition-all cursor-pointer hover:border-primary/50 ${
-        task.status === TaskStatus.Done ? 'opacity-75' : ''
+      className={`group relative bg-card border rounded-lg p-4 transition-all ${
+        isDone ? 'opacity-75' : 'cursor-pointer hover:border-primary/50'
       }`}
-      onClick={onOpen}
+      onClick={() => onOpen?.()}
     >
       {/* Type badge + Status */}
       <div className="flex items-center justify-between mb-2">
@@ -622,7 +660,9 @@ function TaskCardInline({
           <span>{getTimeAgo(task.created_at)}</span>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className={`flex items-center gap-1 transition-opacity ${
+          isDone ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
           {canStart && !isRunning && (
             <button
               onClick={(e) => { e.stopPropagation(); onStartAgent(); }}
@@ -673,11 +713,21 @@ function TaskCardInline({
             </button>
           )}
 
-          {task.status === TaskStatus.Review && (
+          {task.status === TaskStatus.Review && onOpen && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpen(); }}
               className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
               title="View Changes"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {isDone && onPreview && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPreview(); }}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+              title="View Details"
             >
               <Eye className="w-3.5 h-3.5" />
             </button>

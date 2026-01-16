@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ArrowLeft, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { Task, TaskStatus } from '../types';
-import { TaskCard, CreateTaskModal, AgentOutputModal } from '../components/tasks';
+import { TaskCard, CreateTaskModal, AgentOutputModal, TaskPreviewModal } from '../components/tasks';
 import { ask } from '@tauri-apps/plugin-dialog';
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
@@ -29,6 +29,7 @@ export default function Tasks() {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [outputTask, setOutputTask] = useState<Task | null>(null);
+  const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [committingTaskId, setCommittingTaskId] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
@@ -305,18 +306,19 @@ export default function Tasks() {
                 {tasksByStatus[column.status].map((task) => (
                   <div
                     key={task.id}
-                    draggable={!task.agent_pid} // Disable drag while agent is running
+                    draggable={!task.agent_pid && task.status !== TaskStatus.Done} // Disable drag while agent is running or task is done
                     onDragStart={() => handleDragStart(task)}
                     onDragEnd={handleDragEnd}
                   >
                     <TaskCard
                       task={task}
-                      onOpen={() => navigate(`/tasks/${task.id}`)}
+                      onOpen={task.status !== TaskStatus.Done ? () => navigate(`/tasks/${task.id}`) : undefined}
                       onDelete={() => handleDeleteTask(task.id)}
                       onStartAgent={() => handleStartAgent(task)}
                       onStopAgent={() => handleStopAgent(task)}
                       onSendToReview={() => handleSendToReview(task)}
                       onViewOutput={() => setOutputTask(task)}
+                      onPreview={task.status === TaskStatus.Done ? () => setPreviewTask(task) : undefined}
                       isDragging={draggedTask?.id === task.id}
                       isCommitting={committingTaskId === task.id}
                     />
@@ -351,6 +353,14 @@ export default function Tasks() {
         <AgentOutputModal
           task={outputTask}
           onClose={() => setOutputTask(null)}
+        />
+      )}
+
+      {/* Task Preview Modal - for Done tasks */}
+      {previewTask && (
+        <TaskPreviewModal
+          task={previewTask}
+          onClose={() => setPreviewTask(null)}
         />
       )}
     </div>
