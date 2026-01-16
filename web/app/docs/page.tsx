@@ -62,7 +62,7 @@ export default function Docs() {
               {[
                 { href: "#installation", label: "Installation" },
                 { href: "#tasks", label: "Using Tasks (Quick Start)" },
-                { href: "#hook-setup", label: "Setting up Plans (Hook)" },
+                { href: "#hook-setup", label: "Setting up Plans (Auto)" },
                 { href: "#first-review", label: "Your first plan review" },
                 { href: "#annotations", label: "Using annotations" },
                 { href: "#kanban", label: "The unified board" },
@@ -251,155 +251,58 @@ export default function Docs() {
           <section id="hook-setup" className="mb-12 sm:mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-3xl sm:text-4xl font-bold" style={{color: '#D2691E', opacity: 0.3}}>03</span>
-              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Setting up Plans (Hook)</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold" style={{color: '#6B5B47'}}>Setting up Plans (Auto-Configured)</h2>
             </div>
 
             <div className="prose prose-lg max-w-none">
               <p className="text-base sm:text-lg leading-relaxed mb-6" style={{color: '#6B5B47'}}>
-                Medusa uses Claude Code&apos;s native hook system to intercept plans before they execute.
-                You&apos;ll need to add a hook configuration to your Claude Code settings.
+                Medusa automatically configures the Claude Code hook on first launch. Just open
+                Medusa and you&apos;re ready to go.
               </p>
 
-              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Step 1: Locate your Claude Code settings</h3>
-              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
-                Open your Claude Code settings file. The location depends on your operating system:
-              </p>
-
-              <div className="p-4 rounded-xl font-mono text-sm mb-6 overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
-                <p><span style={{color: '#6B9F6B'}}>macOS:</span> ~/.claude/settings.json</p>
-              </div>
-
-              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Step 2: Add the Medusa hook</h3>
-              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
-                Add the following hook configuration to your settings file. This tells Claude Code to
-                send plans to Medusa for review before executing.
-              </p>
-
-              <div className="p-4 rounded-xl font-mono text-sm mb-6 overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
-                <pre>{`{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/path/to/medusa-plan-review.sh",
-            "timeout": 86400
-          }
-        ]
-      }
-    ]
-  }
-}`}</pre>
-              </div>
-
-              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FEF2F2', borderColor: '#EF4444'}}>
-                <h4 className="font-bold mb-2" style={{color: '#991B1B'}}>Important: Set a long timeout</h4>
-                <p className="text-sm sm:text-base" style={{color: '#991B1B', opacity: 0.9}}>
-                  The <code className="px-1 rounded" style={{backgroundColor: '#FEE2E2'}}>timeout</code> value is in seconds.
-                  If the timeout is reached before you approve or reject, Claude Code will <strong>automatically proceed without your approval</strong>.
-                  Set it to <code className="px-1 rounded" style={{backgroundColor: '#FEE2E2'}}>86400</code> (24 hours) to avoid this.
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#F0FFF4', borderColor: '#22C55E'}}>
+                <h4 className="font-bold mb-2" style={{color: '#166534'}}>Automatic setup</h4>
+                <p className="text-sm sm:text-base" style={{color: '#166534', opacity: 0.9}}>
+                  When you launch Medusa, it automatically installs the hook script and configures
+                  your Claude Code settings. No manual setup required for most users.
                 </p>
               </div>
 
-              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FFF8E7', borderColor: '#D2691E'}}>
-                <h4 className="font-bold mb-2" style={{color: '#6B5B47'}}>Important</h4>
-                <p className="text-sm sm:text-base" style={{color: '#6B5B47', opacity: 0.8}}>
-                  Replace <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>/path/to/medusa-plan-review.sh</code> with
-                  the actual path to the hook script. You can find this path in Medusa&apos;s Settings → Hook Configuration.
-                </p>
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>How it works</h3>
+              <div className="space-y-4 mb-6">
+                {[
+                  {
+                    step: "1",
+                    title: "Open Medusa",
+                    description: "Launch the app. It automatically checks and configures the hook system."
+                  },
+                  {
+                    step: "2",
+                    title: "Start Claude Code",
+                    description: "Enter plan mode in Claude Code as usual."
+                  },
+                  {
+                    step: "3",
+                    title: "Review in Medusa",
+                    description: "Plans automatically appear in Medusa for your review."
+                  }
+                ].map((item) => (
+                  <div key={item.step} className="flex gap-4 p-4 rounded-xl" style={{backgroundColor: '#F3F1E8'}}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold" style={{backgroundColor: '#D2691E', color: 'white'}}>
+                      {item.step}
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1" style={{color: '#6B5B47'}}>{item.title}</h4>
+                      <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>{item.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Step 3: Create the hook script</h3>
-              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
-                Create the file <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>~/.claude/hooks/medusa-plan-review.sh</code> with
-                the following content:
-              </p>
-
-              <div className="p-4 rounded-xl font-mono text-xs mb-6 overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
-                <pre>{`#!/bin/bash
-
-# Medusa Plan Review Hook for Claude Code
-
-INPUT=$(cat)
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
-CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
-
-if [ "$TOOL_NAME" != "ExitPlanMode" ]; then
-    echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-    exit 0
-fi
-
-PLANS_DIR="$HOME/.claude/plans"
-PROJECT_NAME=$(basename "$CWD" 2>/dev/null)
-
-# Find recent plan files
-RECENT_PLANS=$(find "$PLANS_DIR" -name "*.md" -mmin -0.17 -type f 2>/dev/null)
-
-if [ -n "$RECENT_PLANS" ]; then
-    if [ -n "$PROJECT_NAME" ]; then
-        PLAN_FILE=$(echo "$RECENT_PLANS" | xargs grep -l "$PROJECT_NAME" 2>/dev/null | head -1)
-    fi
-    if [ -z "$PLAN_FILE" ]; then
-        PLAN_FILE=$(echo "$RECENT_PLANS" | head -1)
-    fi
-fi
-
-if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
-    PLAN_FILE=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1)
-fi
-
-if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
-    echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-    exit 0
-fi
-
-RESPONSE_FILE="/tmp/medusa-response-\${SESSION_ID:-$$}"
-PENDING_DIR="$HOME/.medusa/pending"
-mkdir -p "$PENDING_DIR"
-
-cat > "$PENDING_DIR/$(uuidgen).json" << EOF
-{"plan_file": "$PLAN_FILE", "response_file": "$RESPONSE_FILE"}
-EOF
-
-# Update this path to your Medusa installation
-MEDUSA_APP="/Applications/medusa.app"
-open -a "$MEDUSA_APP" 2>/dev/null || true
-
-# Wait indefinitely for response
-while true; do
-    if [ -f "$RESPONSE_FILE" ] && [ -s "$RESPONSE_FILE" ]; then
-        RESPONSE=$(cat "$RESPONSE_FILE")
-        rm -f "$RESPONSE_FILE"
-        DECISION=$(echo "$RESPONSE" | head -1)
-        FEEDBACK=$(echo "$RESPONSE" | tail -n +2)
-
-        if [ "$DECISION" = "APPROVED" ]; then
-            echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-            exit 0
-        else
-            echo "$FEEDBACK" >&2
-            exit 2
-        fi
-    fi
-    sleep 1
-done`}</pre>
-              </div>
-
-              <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
-                Make the script executable:
-              </p>
-
-              <div className="p-4 rounded-xl font-mono text-sm mb-6 overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
-                <p>chmod +x ~/.claude/hooks/medusa-plan-review.sh</p>
-              </div>
-
-              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Step 4: Verify in Medusa</h3>
+              <h3 className="text-xl font-bold mb-3" style={{color: '#6B5B47'}}>Verify setup status</h3>
               <p className="text-base leading-relaxed mb-4" style={{color: '#6B5B47'}}>
                 Open Medusa and navigate to Settings. The Hook Configuration section shows the
-                paths for reference.
+                status of each component.
               </p>
 
               <div className="relative w-full aspect-[16/10] mb-6 rounded-xl overflow-hidden shadow-lg border border-black/5">
@@ -410,6 +313,62 @@ done`}</pre>
                   className="object-cover"
                 />
               </div>
+
+              <div className="p-4 sm:p-6 rounded-xl border-l-4 mb-6" style={{backgroundColor: '#FEF2F2', borderColor: '#EF4444'}}>
+                <h4 className="font-bold mb-2" style={{color: '#991B1B'}}>Important: Timeout setting</h4>
+                <p className="text-sm sm:text-base" style={{color: '#991B1B', opacity: 0.9}}>
+                  The hook uses a <code className="px-1 rounded" style={{backgroundColor: '#FEE2E2'}}>timeout</code> of 86400 seconds (24 hours).
+                  If this timeout is reached before you approve or reject, Claude Code will <strong>automatically proceed without your approval</strong>.
+                </p>
+              </div>
+
+              {/* Manual Setup Accordion */}
+              <details className="mb-6 rounded-xl border border-black/10 overflow-hidden">
+                <summary className="p-4 cursor-pointer font-bold" style={{backgroundColor: '#F3F1E8', color: '#6B5B47'}}>
+                  Manual Setup (if auto-setup fails)
+                </summary>
+                <div className="p-4 space-y-4" style={{backgroundColor: '#FAFAF5'}}>
+                  <p className="text-base leading-relaxed" style={{color: '#6B5B47'}}>
+                    If you see a setup warning banner in Medusa, you can configure the hook manually:
+                  </p>
+
+                  <h4 className="text-lg font-bold" style={{color: '#6B5B47'}}>Step 1: Download the hook script</h4>
+                  <div className="p-4 rounded-xl font-mono text-sm overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
+                    <pre>{`curl -o ~/.claude/hooks/medusa-plan-review.sh \\
+  https://raw.githubusercontent.com/benodiwal/medusa/main/hooks/medusa-plan-review.sh
+chmod +x ~/.claude/hooks/medusa-plan-review.sh`}</pre>
+                  </div>
+
+                  <h4 className="text-lg font-bold" style={{color: '#6B5B47'}}>Step 2: Add to Claude settings</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Add the following to <code className="px-1 rounded" style={{backgroundColor: '#F3F1E8'}}>~/.claude/settings.json</code>:
+                  </p>
+                  <div className="p-4 rounded-xl font-mono text-sm overflow-x-auto" style={{backgroundColor: '#1a1a1a', color: '#e5e5e5'}}>
+                    <pre>{`{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/medusa-plan-review.sh",
+            "timeout": 86400
+          }
+        ]
+      }
+    ]
+  }
+}`}</pre>
+                  </div>
+
+                  <h4 className="text-lg font-bold" style={{color: '#6B5B47'}}>Step 3: Retry in Medusa</h4>
+                  <p className="text-sm" style={{color: '#6B5B47', opacity: 0.8}}>
+                    Click &quot;Retry Setup&quot; in the warning banner, or go to Settings → Hook Configuration
+                    and click &quot;Reinstall hook configuration&quot;.
+                  </p>
+                </div>
+              </details>
             </div>
           </section>
 

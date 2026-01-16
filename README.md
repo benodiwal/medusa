@@ -64,19 +64,25 @@ The app will be at `src-tauri/target/release/bundle/macos/medusa.app`
 
 The agent runs on an isolated git branch. When it's done, review the changes and merge.
 
-### Using Plans (Requires Hook Setup)
+### Using Plans (Auto-Configured)
 
-To intercept Claude Code plans, you need to configure a hook:
+Medusa automatically configures the Claude Code hook on first launch. Just:
+
+1. Open Medusa
+2. Start Claude Code and enter plan mode
+3. Plans will appear in Medusa for review
+
+**Manual Setup (if auto-setup fails):**
+
+If you see a setup warning banner, you can configure manually:
 
 1. Copy the hook script:
 ```bash
-cp hooks/medusa-plan-review.sh ~/.claude/hooks/
+curl -o ~/.claude/hooks/medusa-plan-review.sh https://raw.githubusercontent.com/benodiwal/medusa/main/hooks/medusa-plan-review.sh
 chmod +x ~/.claude/hooks/medusa-plan-review.sh
 ```
 
-2. Edit `~/.claude/hooks/medusa-plan-review.sh` and update the `MEDUSA_APP` path.
-
-3. Add to `~/.claude/settings.json`:
+2. Add to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
@@ -96,7 +102,7 @@ chmod +x ~/.claude/hooks/medusa-plan-review.sh
 }
 ```
 
-**Important:** Set `timeout` to `86400` (24 hours). If timeout is reached, Claude proceeds without approval.
+**Note:** The `timeout` of `86400` (24 hours) gives you time to review. If timeout is reached, Claude proceeds without approval.
 
 ## Workflow
 
