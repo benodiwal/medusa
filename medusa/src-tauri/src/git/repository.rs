@@ -343,6 +343,133 @@ impl GitManager {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
+    /// Get diff for a worktree compared to main branch (all changes for review)
+    pub fn get_worktree_diff_vs_main(&self, task_id: &str) -> Result<String> {
+        let worktree_path = self.worktrees_dir().join(task_id);
+
+        if !worktree_path.exists() {
+            return Err(anyhow::anyhow!("Worktree not found"));
+        }
+
+        // Get the main branch name (could be main or master)
+        let main_branch = self.get_main_branch_name()?;
+
+        // Use three-dot diff to show changes since branching from main
+        let output = Command::new("git")
+            .args(["diff", &format!("{}...HEAD", main_branch)])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        if !output.status.success() {
+            // Fallback to simple diff if three-dot doesn't work
+            let output = Command::new("git")
+                .args(["diff", &main_branch])
+                .current_dir(&worktree_path)
+                .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                return Err(anyhow::anyhow!("Failed to get diff vs main: {}", stderr));
+            }
+
+            return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    /// Get changed files compared to main branch
+    pub fn get_worktree_changed_files_vs_main(&self, task_id: &str) -> Result<Vec<String>> {
+        let worktree_path = self.worktrees_dir().join(task_id);
+
+        if !worktree_path.exists() {
+            return Err(anyhow::anyhow!("Worktree not found"));
+        }
+
+        let main_branch = self.get_main_branch_name()?;
+
+        let output = Command::new("git")
+            .args(["diff", "--name-only", &format!("{}...HEAD", main_branch)])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        let mut files: Vec<String> = if output.status.success() {
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .filter(|l| !l.is_empty())
+                .map(|l| l.to_string())
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        files.sort();
+        Ok(files)
+    }
+
+    /// Get the main branch name (main or master)
+    pub fn get_main_branch_name(&self) -> Result<String> {
+        // Check if 'main' exists
+        let output = Command::new("git")
+            .args(["rev-parse", "--verify", "main"])
+            .current_dir(&self.repo_path)
+            .output()?;
+
+        if output.status.success() {
+            return Ok("main".to_string());
+        }
+
+        // Check if 'master' exists
+        let output = Command::new("git")
+            .args(["rev-parse", "--verify", "master"])
+            .current_dir(&self.repo_path)
+            .output()?;
+
+        if output.status.success() {
+            return Ok("master".to_string());
+        }
+
+        // Fallback to HEAD~1 or origin/main
+        Ok("main".to_string())
+    }
+
+    /// Get file diff compared to main branch
+    pub fn get_file_diff_vs_main(&self, task_id: &str, file_path: &str) -> Result<String> {
+        let worktree_path = self.worktrees_dir().join(task_id);
+
+        if !worktree_path.exists() {
+            return Err(anyhow::anyhow!("Worktree not found"));
+        }
+
+        let main_branch = self.get_main_branch_name()?;
+
+        let output = Command::new("git")
+            .args(["diff", &format!("{}...HEAD", main_branch), "--", file_path])
+            .current_dir(&worktree_path)
+            .output()?;
+
+        if !output.status.success() {
+            // Fallback for new files - show entire file as added
+            let file_full_path = worktree_path.join(file_path);
+            if file_full_path.exists() {
+                let content = std::fs::read_to_string(&file_full_path)?;
+                let lines: Vec<&str> = content.lines().collect();
+                let diff = format!(
+                    "diff --git a/{} b/{}\nnew file mode 100644\n--- /dev/null\n+++ b/{}\n@@ -0,0 +1,{} @@\n{}",
+                    file_path,
+                    file_path,
+                    file_path,
+                    lines.len(),
+                    lines.iter().map(|l| format!("+{}", l)).collect::<Vec<_>>().join("\n")
+                );
+                return Ok(diff);
+            }
+            return Ok(String::new());
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
     /// Get list of changed files in a worktree (including new/untracked files)
     pub fn get_worktree_changed_files(&self, task_id: &str) -> Result<Vec<String>> {
         let worktree_path = self.worktrees_dir().join(task_id);

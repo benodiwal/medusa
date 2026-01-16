@@ -1351,61 +1351,27 @@ pub async fn get_task_diff(task_id: String) -> Result<String, String> {
 /// Get changed files for a task's worktree
 #[tauri::command]
 pub async fn get_task_changed_files(task_id: String) -> Result<Vec<String>, String> {
-    use std::process::Command;
-    use std::collections::HashSet;
+    use crate::git::GitManager;
 
     let task = get_task(task_id.clone()).await?
         .ok_or_else(|| format!("Task not found: {}", task_id))?;
 
-    let worktree_path = task.worktree_path.as_ref()
-        .ok_or_else(|| "Task has no worktree".to_string())?;
-
-    let mut files = HashSet::new();
-
-    // For Review status, show committed changes vs main
-    // For other statuses, show uncommitted changes
-    if task.status == TaskStatus::Review {
-        // Get files changed between main and current branch
-        let output = Command::new("git")
-            .args(["diff", "--name-only", "main...HEAD"])
-            .current_dir(worktree_path)
-            .output()
-            .map_err(|e| format!("Failed to get changed files: {}", e))?;
-
-        for line in String::from_utf8_lossy(&output.stdout).lines() {
-            if !line.is_empty() {
-                files.insert(line.to_string());
-            }
-        }
-    } else {
-        // Get uncommitted changes (modified tracked files)
-        let output = Command::new("git")
-            .args(["diff", "--name-only", "HEAD"])
-            .current_dir(worktree_path)
-            .output()
-            .map_err(|e| format!("Failed to get changed files: {}", e))?;
-
-        for line in String::from_utf8_lossy(&output.stdout).lines() {
-            if !line.is_empty() {
-                files.insert(line.to_string());
-            }
-        }
-
-        // Get untracked (new) files
-        let output = Command::new("git")
-            .args(["ls-files", "--others", "--exclude-standard"])
-            .current_dir(worktree_path)
-            .output()
-            .map_err(|e| format!("Failed to get untracked files: {}", e))?;
-
-        for line in String::from_utf8_lossy(&output.stdout).lines() {
-            if !line.is_empty() {
-                files.insert(line.to_string());
-            }
-        }
+    if task.worktree_path.is_none() {
+        return Err("Task has no worktree".to_string());
     }
 
-    Ok(files.into_iter().collect())
+    let git = GitManager::new(task.project_path)
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    // For Review status, show committed changes vs main branch
+    // For other statuses, show uncommitted changes
+    if task.status == TaskStatus::Review {
+        git.get_worktree_changed_files_vs_main(&task_id)
+            .map_err(|e| format!("Failed to get changed files: {}", e))
+    } else {
+        git.get_worktree_changed_files(&task_id)
+            .map_err(|e| format!("Failed to get changed files: {}", e))
+    }
 }
 
 /// Send a message to a running agent
@@ -1432,6 +1398,7 @@ pub async fn has_active_agent_session(task_id: String) -> Result<bool, String> {
 /// Get file diff for a specific file in task worktree
 #[tauri::command]
 pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<String, String> {
+    use crate::git::GitManager;
     use std::process::Command;
     use std::fs;
     use std::path::Path;
@@ -1441,22 +1408,29 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
 
     let worktree_path = task.worktree_path.as_ref()
         .ok_or_else(|| "Task has no worktree".to_string())?;
+
+    // For Review status, use GitManager to get diff vs main (handles main/master detection)
+    if task.status == TaskStatus::Review {
+        let git = GitManager::new(task.project_path)
+            .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+        return git.get_file_diff_vs_main(&task_id, &file_path)
+            .map_err(|e| format!("Failed to get diff: {}", e));
+    }
+
+    // For non-Review status, show uncommitted changes vs HEAD
     let full_file_path = Path::new(&worktree_path).join(&file_path);
 
-    // For Review status, show diff vs main (committed changes)
-    // For other statuses, show uncommitted changes vs HEAD
-    let diff_base = if task.status == TaskStatus::Review { "main" } else { "HEAD" };
-
     let output = Command::new("git")
-        .args(["diff", diff_base, "--", &file_path])
+        .args(["diff", "HEAD", "--", &file_path])
         .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
 
     let diff_output = String::from_utf8_lossy(&output.stdout).to_string();
 
-    // If diff is empty and not in Review mode, check if it's a new untracked file
-    if diff_output.trim().is_empty() && task.status != TaskStatus::Review && full_file_path.exists() {
+    // If diff is empty, check if it's a new untracked file
+    if diff_output.trim().is_empty() && full_file_path.exists() {
         // Check if file is untracked
         let status_output = Command::new("git")
             .args(["ls-files", "--others", "--exclude-standard", "--", &file_path])
@@ -1471,13 +1445,14 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
             let content = fs::read_to_string(&full_file_path)
                 .map_err(|e| format!("Failed to read file: {}", e))?;
 
+            let lines: Vec<&str> = content.lines().collect();
             let mut diff = format!("diff --git a/{} b/{}\n", file_path, file_path);
             diff.push_str("new file mode 100644\n");
             diff.push_str("--- /dev/null\n");
             diff.push_str(&format!("+++ b/{}\n", file_path));
-            diff.push_str("@@ -0,0 +1 @@\n");
+            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", lines.len()));
 
-            for line in content.lines() {
+            for line in lines {
                 diff.push_str(&format!("+{}\n", line));
             }
 
@@ -1505,9 +1480,16 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
     let worktree_path = task.worktree_path.as_ref()
         .ok_or_else(|| "Task has no worktree".to_string())?;
 
+    let git = GitManager::new(task.project_path.clone())
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    // Get the main branch name (handles main vs master)
+    let main_branch = git.get_main_branch_name()
+        .map_err(|e| format!("Failed to detect main branch: {}", e))?;
+
     // Capture files changed and commits BEFORE cleanup
     let files_output = Command::new("git")
-        .args(["diff", "--name-only", "main...HEAD"])
+        .args(["diff", "--name-only", &format!("{}...HEAD", main_branch)])
         .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to get changed files: {}", e))?;
@@ -1520,7 +1502,7 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
 
     // Get commits (hash|message format)
     let commits_output = Command::new("git")
-        .args(["log", "main..HEAD", "--pretty=format:%h|%s"])
+        .args(["log", &format!("{}..HEAD", main_branch), "--pretty=format:%h|%s"])
         .current_dir(worktree_path)
         .output()
         .map_err(|e| format!("Failed to get commits: {}", e))?;
@@ -1538,9 +1520,6 @@ pub async fn merge_task(task_id: String) -> Result<(), String> {
             .unwrap_or("Changes merged");
         format!("{}|{}", first_commit_msg, commits_str)
     };
-
-    let git = GitManager::new(task.project_path.clone())
-        .map_err(|e| format!("Failed to open git repo: {}", e))?;
 
     // Get the current branch to return to after merge
     let current_branch = git.current_branch()
@@ -1739,6 +1718,7 @@ pub async fn send_task_to_review(task_id: String) -> Result<(), String> {
 /// Get commits for a task branch (compared to main)
 #[tauri::command]
 pub async fn get_task_commits(task_id: String) -> Result<Vec<TaskCommit>, String> {
+    use crate::git::GitManager;
     use std::process::Command;
 
     let task = get_task(task_id.clone()).await?
@@ -1747,12 +1727,19 @@ pub async fn get_task_commits(task_id: String) -> Result<Vec<TaskCommit>, String
     let worktree_path = task.worktree_path.as_ref()
         .ok_or_else(|| "Task has no worktree".to_string())?;
 
+    let git = GitManager::new(task.project_path)
+        .map_err(|e| format!("Failed to open git repo: {}", e))?;
+
+    // Get the main branch name (handles main vs master)
+    let main_branch = git.get_main_branch_name()
+        .map_err(|e| format!("Failed to detect main branch: {}", e))?;
+
     // Get commits on this branch that aren't on main
     // Format: hash|short_hash|message|author|date
     let output = Command::new("git")
         .args([
             "log",
-            "main..HEAD",
+            &format!("{}..HEAD", main_branch),
             "--pretty=format:%H|%h|%s|%an|%ar",
         ])
         .current_dir(worktree_path)
