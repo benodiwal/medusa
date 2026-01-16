@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,10 +19,22 @@ const Settings = () => {
   const navigate = useNavigate();
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [reinstalling, setReinstalling] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>("");
 
   useEffect(() => {
     loadSetupStatus();
+    loadAppVersion();
   }, []);
+
+  const loadAppVersion = async () => {
+    try {
+      const version = await getVersion();
+      setAppVersion(version);
+    } catch (error) {
+      console.error('Failed to get app version:', error);
+      setAppVersion("unknown");
+    }
+  };
 
   const loadSetupStatus = async () => {
     try {
@@ -277,7 +290,7 @@ const Settings = () => {
                 />
                 <div>
                   <h3 className="text-sm font-medium text-foreground">Medusa</h3>
-                  <p className="text-xs text-muted-foreground">Version 0.1.1</p>
+                  <p className="text-xs text-muted-foreground">Version {appVersion || "..."}</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
