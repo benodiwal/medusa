@@ -580,6 +580,28 @@ impl TaskAgentManager {
         Ok(())
     }
 
+    /// Stop all running agents (called on app shutdown)
+    pub fn stop_all_agents(&self) {
+        info!("Stopping all running agents...");
+
+        // Get all task IDs first to avoid holding locks
+        let task_ids: Vec<String> = {
+            if let Ok(agents) = self.agents.lock() {
+                agents.keys().cloned().collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        for task_id in task_ids {
+            if let Err(e) = self.stop_agent(&task_id) {
+                warn!("Failed to stop agent {}: {}", task_id, e);
+            }
+        }
+
+        info!("All agents stopped");
+    }
+
     /// Get agent output - loads from file if not in memory
     pub fn get_agent_output(&self, task_id: &str) -> Option<Vec<String>> {
         // First try to get from memory (active session)
@@ -610,4 +632,12 @@ impl Default for TaskAgentManager {
 // Global instance for use in commands
 lazy_static::lazy_static! {
     pub static ref TASK_AGENT_MANAGER: Arc<Mutex<TaskAgentManager>> = Arc::new(Mutex::new(TaskAgentManager::new()));
+}
+
+/// Stop all agents - called on app shutdown
+pub fn shutdown_all_agents() {
+    info!("App shutdown: stopping all agents");
+    if let Ok(manager) = TASK_AGENT_MANAGER.lock() {
+        manager.stop_all_agents();
+    }
 }

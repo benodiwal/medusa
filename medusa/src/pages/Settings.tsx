@@ -1,18 +1,49 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { invoke } from "@tauri-apps/api/core";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor, Type, RotateCcw } from "lucide-react";
+import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor, Type, RotateCcw, CheckCircle, XCircle, RefreshCw, Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFontSettings } from "@/contexts/FontContext";
+import { SetupStatus } from "@/types";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { settings, setFontSize, setFontFamily, setZoomLevel, resetToDefaults } = useFontSettings();
   const navigate = useNavigate();
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
+  const [reinstalling, setReinstalling] = useState(false);
+
+  useEffect(() => {
+    loadSetupStatus();
+  }, []);
+
+  const loadSetupStatus = async () => {
+    try {
+      const status = await invoke<SetupStatus>('get_setup_status');
+      setSetupStatus(status);
+    } catch (error) {
+      console.error('Failed to get setup status:', error);
+    }
+  };
+
+  const handleReinstall = async () => {
+    setReinstalling(true);
+    try {
+      const status = await invoke<SetupStatus>('reinstall_setup');
+      setSetupStatus(status);
+    } catch (error) {
+      console.error('Failed to reinstall:', error);
+      alert(`Reinstall failed: ${error}`);
+    } finally {
+      setReinstalling(false);
+    }
+  };
 
   const themeOptions = [
     { value: "system", label: "System", icon: Monitor },
@@ -261,27 +292,113 @@ const Settings = () => {
             <div>
               <h2 className="text-sm font-medium text-foreground">Hook Configuration</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Claude Code hook locations
+                Claude Code hook status and locations
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-              <div className="space-y-2">
+            <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+              {/* Setup Status */}
+              {setupStatus && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Hook Script</span>
+                    <div className="flex items-center gap-1.5">
+                      {setupStatus.hook_script_installed ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-primary" />
+                          <span className="text-xs text-muted-foreground">Installed</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">Not installed</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Script Permissions</span>
+                    <div className="flex items-center gap-1.5">
+                      {setupStatus.hook_script_executable ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-primary" />
+                          <span className="text-xs text-muted-foreground">Executable</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">Not executable</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Claude Settings</span>
+                    <div className="flex items-center gap-1.5">
+                      {setupStatus.hook_config_installed ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-primary" />
+                          <span className="text-xs text-muted-foreground">Configured</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">Not configured</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Data Directory</span>
+                    <div className="flex items-center gap-1.5">
+                      {setupStatus.medusa_dir_exists ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-primary" />
+                          <span className="text-xs text-muted-foreground">Created</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">Missing</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-border space-y-2">
                 <h3 className="text-sm font-medium text-foreground">Hook Script Location</h3>
                 <code className="block text-xs bg-muted text-muted-foreground p-2 rounded overflow-x-auto">
-                  ~/.claude/hooks/medusa-plan-review.sh
+                  {setupStatus?.hook_script_path || '~/.claude/hooks/medusa-plan-review.sh'}
                 </code>
               </div>
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">Queue File Location</h3>
+                <h3 className="text-sm font-medium text-foreground">Claude Settings Location</h3>
                 <code className="block text-xs bg-muted text-muted-foreground p-2 rounded overflow-x-auto">
-                  ~/.medusa/queue.json
+                  {setupStatus?.settings_path || '~/.claude/settings.json'}
                 </code>
               </div>
               <p className="text-xs text-muted-foreground">
                 The hook intercepts ExitPlanMode events from Claude Code and adds plans to
-                the queue for review.
+                the queue for review. Setup is automatic on app start.
               </p>
+
+              {/* Reinstall Button */}
+              <div className="pt-3 border-t border-border">
+                <button
+                  onClick={handleReinstall}
+                  disabled={reinstalling}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {reinstalling ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                  {reinstalling ? 'Reinstalling...' : 'Reinstall hook configuration'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -160,3 +160,14 @@ export interface TaskCommit {
   date: string;
 }
 
+// Setup status for auto-configuration
+export interface SetupStatus {
+  hook_script_installed: boolean;
+  hook_script_executable: boolean;
+  hook_config_installed: boolean;
+  medusa_dir_exists: boolean;
+  needs_setup: boolean;
+  hook_script_path: string;
+  settings_path: string;
+}
+

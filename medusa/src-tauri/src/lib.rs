@@ -1,12 +1,13 @@
 pub mod commands;
 pub mod git;
 pub mod logging;
+pub mod setup;
 pub mod state;
 pub mod task_agent;
 
 pub use state::AppState;
 
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -66,12 +67,28 @@ pub fn run() {
             commands::get_task_commits,
             commands::amend_task_commit,
             commands::has_uncommitted_changes,
+            // Setup commands
+            setup::get_setup_status,
+            setup::auto_setup,
+            setup::reinstall_setup,
         ])
         .setup(|app| {
+            // Run auto-setup on app start
+            if let Err(e) = setup::run_auto_setup() {
+                tracing::warn!("Auto-setup failed: {}", e);
+            }
+
             let window = app.get_webview_window("main").unwrap();
             window.maximize().unwrap();
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let RunEvent::Exit = event {
+                // Stop all running agents when app exits (Ctrl+C or window close)
+                tracing::info!("App exiting, cleaning up agents...");
+                task_agent::shutdown_all_agents();
+            }
+        });
 }
