@@ -71,6 +71,7 @@ pub fn run() {
             setup::get_setup_status,
             setup::auto_setup,
             setup::reinstall_setup,
+            setup::update_hook_settings,
         ])
         .setup(|app| {
             // Run auto-setup on app start

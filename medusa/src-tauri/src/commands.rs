@@ -563,6 +563,12 @@ pub async fn save_settings(settings: MedusaSettings) -> Result<(), String> {
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
     fs::write(&settings_file, content)
         .map_err(|e| format!("Failed to write settings: {}", e))?;
+
+    // Update hook config with new timeout setting
+    if let Err(e) = crate::setup::update_hook_config() {
+        tracing::warn!("Failed to update hook config after settings save: {}", e);
+    }
+
     Ok(())
 }
 

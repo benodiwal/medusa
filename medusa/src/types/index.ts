@@ -171,3 +171,8 @@ export interface SetupStatus {
   settings_path: string;
 }
 
+// Medusa application settings
+export interface MedusaSettings {
+  hook_timeout_minutes: number;
+}
+

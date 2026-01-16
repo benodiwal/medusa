@@ -30,8 +30,8 @@ fi
 PLANS_DIR="$HOME/.claude/plans"
 PROJECT_NAME=$(basename "$CWD" 2>/dev/null)
 
-# Find recent plan files
-RECENT_PLANS=$(find "$PLANS_DIR" -name "*.md" -mmin -0.17 -type f 2>/dev/null)
+# Find recent plan files (within last 5 minutes to handle delays)
+RECENT_PLANS=$(find "$PLANS_DIR" -name "*.md" -mmin -5 -type f 2>/dev/null)
 
 if [ -n "$RECENT_PLANS" ]; then
     if [ -n "$PROJECT_NAME" ]; then
@@ -46,9 +46,16 @@ if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
     PLAN_FILE=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1)
 fi
 
+# If still no plan file found, wait a moment and try again (handles timing issues)
 if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
-    echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-    exit 0
+    sleep 2
+    PLAN_FILE=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1)
+fi
+
+# If no plan file exists at all, deny to prevent unintended execution
+if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
+    echo "No plan file found in $PLANS_DIR - cannot proceed without a plan" >&2
+    exit 2
 fi
 
 RESPONSE_FILE="/tmp/medusa-response-${SESSION_ID:-$$}"
@@ -234,6 +241,22 @@ fn install_hook_script() -> Result<()> {
     Ok(())
 }
 
+/// Get the current hook timeout in seconds from Medusa settings
+fn get_hook_timeout_seconds() -> u64 {
+    let settings_file = get_medusa_dir().join("settings.json");
+    if settings_file.exists() {
+        if let Ok(content) = fs::read_to_string(&settings_file) {
+            if let Ok(settings) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(minutes) = settings.get("hook_timeout_minutes").and_then(|v| v.as_u64()) {
+                    return minutes * 60;
+                }
+            }
+        }
+    }
+    // Default: 10 minutes in seconds
+    600
+}
+
 /// Install hook configuration in Claude settings
 fn install_hook_config() -> Result<()> {
     let path = get_claude_settings_path();
@@ -251,6 +274,9 @@ fn install_hook_config() -> Result<()> {
         serde_json::json!({})
     };
 
+    // Get timeout from Medusa settings
+    let timeout_seconds = get_hook_timeout_seconds();
+
     // Create the hook configuration
     let medusa_hook = serde_json::json!({
         "matcher": "ExitPlanMode",
@@ -258,7 +284,7 @@ fn install_hook_config() -> Result<()> {
             {
                 "type": "command",
                 "command": "~/.claude/hooks/medusa-plan-review.sh",
-                "timeout": 86400
+                "timeout": timeout_seconds
             }
         ]
     });
@@ -387,6 +413,12 @@ pub fn force_reinstall() -> Result<SetupStatus> {
     Ok(check_setup_status())
 }
 
+/// Update just the hook config (e.g., when settings change)
+pub fn update_hook_config() -> Result<()> {
+    info!("Updating hook config with current settings...");
+    install_hook_config()
+}
+
 // ============== Tauri Commands ==============
 
 /// Check setup status
@@ -405,6 +437,12 @@ pub async fn auto_setup() -> Result<SetupStatus, String> {
 #[tauri::command]
 pub async fn reinstall_setup() -> Result<SetupStatus, String> {
     force_reinstall().map_err(|e| format!("Reinstall failed: {}", e))
+}
+
+/// Update hook config (call after changing settings like timeout)
+#[tauri::command]
+pub async fn update_hook_settings() -> Result<(), String> {
+    update_hook_config().map_err(|e| format!("Failed to update hook config: {}", e))
 }
 
 #[cfg(test)]

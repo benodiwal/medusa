@@ -8,10 +8,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor, Type, RotateCcw, CheckCircle, XCircle, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronDown, Check, ArrowLeft, Moon, Sun, Monitor, Type, RotateCcw, CheckCircle, XCircle, RefreshCw, Loader2, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFontSettings } from "@/contexts/FontContext";
-import { SetupStatus } from "@/types";
+import { SetupStatus, MedusaSettings } from "@/types";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -20,10 +20,13 @@ const Settings = () => {
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [reinstalling, setReinstalling] = useState(false);
   const [appVersion, setAppVersion] = useState<string>("");
+  const [medusaSettings, setMedusaSettings] = useState<MedusaSettings>({ hook_timeout_minutes: 10 });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     loadSetupStatus();
     loadAppVersion();
+    loadMedusaSettings();
   }, []);
 
   const loadAppVersion = async () => {
@@ -43,6 +46,35 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to get setup status:', error);
     }
+  };
+
+  const loadMedusaSettings = async () => {
+    try {
+      const settings = await invoke<MedusaSettings>('get_settings');
+      setMedusaSettings(settings);
+    } catch (error) {
+      console.error('Failed to get medusa settings:', error);
+    }
+  };
+
+  const saveMedusaSettings = async (newSettings: MedusaSettings) => {
+    setSavingSettings(true);
+    try {
+      await invoke('save_settings', { settings: newSettings });
+      setMedusaSettings(newSettings);
+      // Reload setup status since hook config may have changed
+      loadSetupStatus();
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert(`Failed to save settings: ${error}`);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleTimeoutChange = (minutes: number) => {
+    const newSettings = { ...medusaSettings, hook_timeout_minutes: minutes };
+    saveMedusaSettings(newSettings);
   };
 
   const handleReinstall = async () => {
@@ -268,6 +300,65 @@ const Settings = () => {
                   <RotateCcw className="w-3 h-3" />
                   Reset to defaults
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Plan Mode Section */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-medium text-foreground">Plan Mode</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Configure how plan review works with Claude Code
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+              {/* Review Timeout */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Review Timeout</label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        How long Claude Code waits for your approval
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {medusaSettings.hook_timeout_minutes} min
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={60}
+                  step={5}
+                  value={medusaSettings.hook_timeout_minutes}
+                  onChange={(e) => handleTimeoutChange(Number(e.target.value))}
+                  disabled={savingSettings}
+                  className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer disabled:opacity-50
+                    [&::-webkit-slider-thumb]:appearance-none
+                    [&::-webkit-slider-thumb]:w-4
+                    [&::-webkit-slider-thumb]:h-4
+                    [&::-webkit-slider-thumb]:rounded-full
+                    [&::-webkit-slider-thumb]:bg-primary
+                    [&::-webkit-slider-thumb]:cursor-pointer
+                    [&::-moz-range-thumb]:w-4
+                    [&::-moz-range-thumb]:h-4
+                    [&::-moz-range-thumb]:rounded-full
+                    [&::-moz-range-thumb]:bg-primary
+                    [&::-moz-range-thumb]:border-0
+                    [&::-moz-range-thumb]:cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>5 min</span>
+                  <span>60 min</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  If you don't respond within this time, Claude will timeout and need to retry.
+                </p>
               </div>
             </div>
           </div>
