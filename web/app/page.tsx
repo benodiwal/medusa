@@ -3,6 +3,8 @@ import Ascii from "../components/landing/Ascii";
 import Footer from "../components/landing/Footer";
 import WhyMedusa from "../components/landing/WhyMedusa";
 import ShareFeature from "../components/landing/ShareFeature";
+import GatekeeperBoss from "../components/landing/GatekeeperBoss";
+import SponsorBanner from "../components/landing/SponsorBanner";
 import Image from "next/image";
 import Link from "next/link";
 import DownloadButton from "../components/DownloadButton";
@@ -12,6 +14,7 @@ const DEMO_URL = "/share#N4IgLglmA2CmIC4QEEAmqAEBVAzrAThsgK5gAWsAdpAMYCGkA9pSADQ
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#FBFBF4]">
+      <SponsorBanner />
       <Header />
 
       {/* ASCII Art Background - positioned from header level */}
@@ -74,6 +77,8 @@ export default function Home() {
       <WhyMedusa />
 
       <ShareFeature />
+
+      <GatekeeperBoss />
 
       <Footer />
 

@@ -5,7 +5,7 @@ import DownloadButton from "../DownloadButton"
 
 const Header = () => {
   return (
-      <header className="fixed top-0 w-full z-[100] border-b border-gray-100" style={{backgroundColor: '#FBFBF4'}}>
+      <header className="fixed top-9 w-full z-[100] border-b border-gray-100" style={{backgroundColor: '#FBFBF4'}}>
         <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-10 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
