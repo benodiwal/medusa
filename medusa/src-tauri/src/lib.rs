@@ -40,6 +40,8 @@ pub fn run() {
             commands::get_history,
             commands::search_history,
             commands::clear_old_history,
+            commands::clear_all_history,
+            commands::delete_history_item,
             commands::get_history_count,
             // Task management commands (Medusa 2.0)
             commands::create_task,

@@ -811,6 +811,43 @@ pub async fn clear_old_history(days: Option<u32>) -> Result<u32, String> {
     Ok(deleted as u32)
 }
 
+/// Clear all history
+#[tauri::command]
+pub async fn clear_all_history() -> Result<u32, String> {
+    info!("Clearing all history");
+
+    let conn = init_history_db()?;
+
+    let deleted = conn.execute(
+        "DELETE FROM history",
+        [],
+    ).map_err(|e| format!("Failed to clear all history: {}", e))?;
+
+    info!("Cleared {} history items", deleted);
+    Ok(deleted as u32)
+}
+
+/// Delete a single history item by ID
+#[tauri::command]
+pub async fn delete_history_item(id: String) -> Result<bool, String> {
+    info!("Deleting history item: {}", id);
+
+    let conn = init_history_db()?;
+
+    let deleted = conn.execute(
+        "DELETE FROM history WHERE id = ?1",
+        params![id],
+    ).map_err(|e| format!("Failed to delete history item: {}", e))?;
+
+    if deleted > 0 {
+        info!("Deleted history item: {}", id);
+        Ok(true)
+    } else {
+        info!("History item not found: {}", id);
+        Ok(false)
+    }
+}
+
 /// Get history count
 #[tauri::command]
 pub async fn get_history_count() -> Result<u32, String> {

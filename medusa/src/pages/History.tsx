@@ -62,19 +62,34 @@ export default function History() {
     }
   };
 
-  const handleClearOldHistory = async () => {
-    const confirmed = await ask('Clear history older than 30 days?', {
-      title: 'Confirm Clear History',
+  const handleClearAllHistory = async () => {
+    const confirmed = await ask('Clear ALL history? This cannot be undone.', {
+      title: 'Confirm Clear All History',
       kind: 'warning',
     });
     if (!confirmed) return;
 
     try {
-      const deleted = await invoke<number>('clear_old_history', { days: 30 });
-      alert(`Cleared ${deleted} old items`);
+      const deleted = await invoke<number>('clear_all_history');
+      alert(`Cleared ${deleted} items`);
       loadHistory();
     } catch (error) {
-      console.error('Failed to clear old history:', error);
+      console.error('Failed to clear all history:', error);
+    }
+  };
+
+  const handleDeleteItem = async (id: string, projectName: string) => {
+    const confirmed = await ask(`Delete history item for "${projectName}"?`, {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    });
+    if (!confirmed) return;
+
+    try {
+      await invoke<boolean>('delete_history_item', { id });
+      loadHistory();
+    } catch (error) {
+      console.error('Failed to delete history item:', error);
     }
   };
 
@@ -158,9 +173,9 @@ export default function History() {
             </form>
 
             <button
-              onClick={handleClearOldHistory}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              title="Clear old history"
+              onClick={handleClearAllHistory}
+              className="p-2 text-muted-foreground hover:text-red-500 hover:bg-muted rounded-lg transition-colors"
+              title="Clear all history"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -223,6 +238,13 @@ export default function History() {
                       title="View plan"
                     >
                       <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteItem(item.id, item.project_name)}
+                      className="p-2 text-muted-foreground hover:text-red-500 hover:bg-muted rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
