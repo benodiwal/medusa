@@ -63,7 +63,7 @@ PENDING_DIR="$HOME/.medusa/pending"
 mkdir -p "$PENDING_DIR"
 
 cat > "$PENDING_DIR/$(uuidgen).json" << EOF
-{"plan_file": "$PLAN_FILE", "response_file": "$RESPONSE_FILE"}
+{"plan_file": "$PLAN_FILE", "response_file": "$RESPONSE_FILE", "cwd": "$CWD"}
 EOF
 
 # Open Medusa app

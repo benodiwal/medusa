@@ -92,6 +92,8 @@ fn save_queue_to_file(queue: &PlanQueue) {
 struct PendingPlan {
     plan_file: String,
     response_file: String,
+    /// Current working directory where Claude Code is running (for project identification)
+    cwd: Option<String>,
 }
 
 /// Process pending plan files from ~/.medusa/pending/
@@ -107,12 +109,19 @@ fn process_pending_plans(queue: &mut PlanQueue) {
                     if let Ok(pending) = serde_json::from_str::<PendingPlan>(&content) {
                         // Read the actual plan content
                         if let Ok(plan_content) = fs::read_to_string(&pending.plan_file) {
-                            let project_name = PathBuf::from(&pending.plan_file)
-                                .parent()
-                                .and_then(|p| p.file_name())
-                                .and_then(|n| n.to_str())
-                                .map(String::from)
-                                .unwrap_or_else(|| "Unknown Project".to_string());
+                            // Derive project name from cwd (preferred) or fall back to plan file path
+                            let project_name = pending.cwd
+                                .as_ref()
+                                .and_then(|c| PathBuf::from(c).file_name()?.to_str().map(String::from))
+                                .unwrap_or_else(|| {
+                                    // Fallback: try to get from plan file path (less reliable)
+                                    PathBuf::from(&pending.plan_file)
+                                        .parent()
+                                        .and_then(|p| p.file_name())
+                                        .and_then(|n| n.to_str())
+                                        .map(String::from)
+                                        .unwrap_or_else(|| "Unknown Project".to_string())
+                                });
 
                             // Check if we already have a Pending plan from the same project
                             // This prevents duplicates when Claude retries or multiple hooks fire
