@@ -59,16 +59,29 @@ if [ -z "$PLAN_FILE" ] || [ ! -f "$PLAN_FILE" ]; then
 fi
 
 RESPONSE_FILE="/tmp/medusa-response-${SESSION_ID:-$$}"
-PENDING_DIR="$HOME/.medusa/pending"
-mkdir -p "$PENDING_DIR"
 
-cat > "$PENDING_DIR/$(uuidgen).json" << EOF
+# Check if this is a task agent (MEDUSA_TASK_ID is set)
+if [ -n "$MEDUSA_TASK_ID" ]; then
+    # Task agent: write to task-specific location
+    TASK_PLANS_DIR="$HOME/.medusa/task-plans"
+    mkdir -p "$TASK_PLANS_DIR"
+
+    cat > "$TASK_PLANS_DIR/${MEDUSA_TASK_ID}.json" << EOF
+{"plan_file": "$PLAN_FILE", "response_file": "$RESPONSE_FILE", "cwd": "$CWD", "task_id": "$MEDUSA_TASK_ID", "created_at": $(date +%s)}
+EOF
+else
+    # Standalone plan mode: write to general pending directory
+    PENDING_DIR="$HOME/.medusa/pending"
+    mkdir -p "$PENDING_DIR"
+
+    cat > "$PENDING_DIR/$(uuidgen).json" << EOF
 {"plan_file": "$PLAN_FILE", "response_file": "$RESPONSE_FILE", "cwd": "$CWD"}
 EOF
 
-# Open Medusa app
-MEDUSA_APP="/Applications/medusa.app"
-open -a "$MEDUSA_APP" 2>/dev/null || true
+    # Open Medusa app (only for standalone plans, task agents are already in Medusa)
+    MEDUSA_APP="/Applications/medusa.app"
+    open -a "$MEDUSA_APP" 2>/dev/null || true
+fi
 
 # Wait indefinitely for response
 while true; do

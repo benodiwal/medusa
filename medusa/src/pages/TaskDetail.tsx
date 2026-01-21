@@ -25,10 +25,15 @@ import {
   Check,
   CheckCircle,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
-import { Task, TaskStatus, TaskCommit } from '../types';
+import { Task, TaskStatus, TaskCommit, TaskPlan, Block, Annotation } from '../types';
 import { MarkdownRenderer } from '../components/chat/MarkdownRenderer';
 import { ask } from '@tauri-apps/plugin-dialog';
+import { PlanViewer, ViewerHandle, AnnotationSidebar } from '../components/plan';
+import { parseMarkdownToBlocks, exportFeedback } from '../utils/parser';
+import { useAuthor, getRandomColor } from '../contexts/AuthorContext';
+import { AuthorNameDialog } from '../components/share';
 
 interface AgentOutputEvent {
   task_id: string;
@@ -158,6 +163,16 @@ export default function TaskDetail() {
   const [editingCommit, setEditingCommit] = useState<string | null>(null);
   const [editedMessage, setEditedMessage] = useState('');
   const [committing, setCommitting] = useState(false);
+
+  // Plan review state
+  const [pendingPlan, setPendingPlan] = useState<TaskPlan | null>(null);
+  const [planBlocks, setPlanBlocks] = useState<Block[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const viewerRef = useRef<ViewerHandle>(null);
+  const { identity, setIdentity } = useAuthor();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -304,6 +319,36 @@ export default function TaskDetail() {
     const interval = setInterval(loadTask, 3000); // Standardized polling interval
     return () => clearInterval(interval);
   }, [loadTask]);
+
+  // Poll for pending plan
+  useEffect(() => {
+    if (!id) return;
+
+    const checkForPlan = async () => {
+      try {
+        const plan = await invoke<TaskPlan | null>('get_task_plan', { taskId: id });
+        if (plan && !pendingPlan) {
+          setPendingPlan(plan);
+          setPlanBlocks(parseMarkdownToBlocks(plan.content));
+          // Show name dialog if no identity
+          if (!identity) {
+            setShowNameDialog(true);
+          }
+        } else if (!plan && pendingPlan) {
+          // Plan was responded to
+          setPendingPlan(null);
+          setPlanBlocks([]);
+          setAnnotations([]);
+        }
+      } catch {
+        // No plan available
+      }
+    };
+
+    checkForPlan();
+    const interval = setInterval(checkForPlan, 2000);
+    return () => clearInterval(interval);
+  }, [id, pendingPlan, identity]);
 
   const handleStartAgent = async () => {
     if (!task) return;
@@ -459,6 +504,76 @@ export default function TaskDetail() {
       default:
         return <Bot className="w-4 h-4 text-muted-foreground" />;
     }
+  };
+
+  // Plan annotation handlers
+  const handleAddAnnotation = useCallback((ann: Annotation) => {
+    setAnnotations(prev => [...prev, ann]);
+  }, []);
+
+  const handleSelectAnnotation = useCallback((id: string | null) => {
+    setSelectedAnnotationId(id);
+  }, []);
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations(prev => prev.filter(a => a.id !== id));
+    viewerRef.current?.removeHighlight(id);
+    if (selectedAnnotationId === id) {
+      setSelectedAnnotationId(null);
+    }
+  }, [selectedAnnotationId]);
+
+  // Plan decision handlers
+  const handleApprovePlan = async () => {
+    if (!pendingPlan) return;
+    setIsApproving(true);
+    try {
+      const feedbackText = annotations.length > 0 ? exportFeedback(planBlocks, annotations) : undefined;
+      await invoke('respond_to_task_plan', {
+        taskId: task?.id,
+        approved: true,
+        feedback: feedbackText,
+      });
+      setPendingPlan(null);
+      setAnnotations([]);
+      setPlanBlocks([]);
+    } catch (error) {
+      console.error('Failed to approve plan:', error);
+      alert(`Failed to approve: ${error}`);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleRejectPlan = async () => {
+    if (!pendingPlan) return;
+    if (annotations.length === 0) {
+      alert('Please add at least one annotation to explain what changes you want.');
+      return;
+    }
+    setIsApproving(true);
+    try {
+      const feedback = exportFeedback(planBlocks, annotations);
+      await invoke('respond_to_task_plan', {
+        taskId: task?.id,
+        approved: false,
+        feedback,
+      });
+      setPendingPlan(null);
+      setAnnotations([]);
+      setPlanBlocks([]);
+    } catch (error) {
+      console.error('Failed to reject plan:', error);
+      alert(`Failed to request changes: ${error}`);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleSetAuthorName = (name: string) => {
+    const newIdentity = { name, color: identity?.color || getRandomColor() };
+    setIdentity(newIdentity);
+    setShowNameDialog(false);
   };
 
   if (loading) {
@@ -760,100 +875,233 @@ export default function TaskDetail() {
             </div>
           </div>
         ) : activeTab === 'chat' && task.status !== TaskStatus.Review ? (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Messages - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {isRunning ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                      <span>Waiting for response...</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Bot className="w-12 h-12 mx-auto text-muted-foreground/50" />
-                      <p>Start the agent to begin chatting</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${
-                      msg.type === 'user' ? 'justify-end' : ''
-                    }`}
-                  >
-                    {msg.type !== 'user' && (
-                      <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
-                    )}
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        msg.type === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-card border border-border'
-                      }`}
-                    >
-                      {msg.type === 'assistant' ? (
-                        <MarkdownRenderer content={msg.content} className="text-sm" />
-                      ) : (
-                        <div
-                          className={`text-sm whitespace-pre-wrap break-words ${
-                            msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' : ''
-                          }`}
-                        >
-                          {msg.content}
+          pendingPlan ? (
+            /* Plan Review Mode */
+            <div className="flex-1 flex min-h-0">
+              {/* Main content */}
+              <div className="flex-1 flex flex-col min-w-0">
+                {/* Plan Review Header */}
+                <div className="px-6 py-3 border-b border-border bg-amber-500/5 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                        <div>
+                          <h2 className="text-base font-semibold text-foreground">Plan Review Required</h2>
+                          <p className="text-xs text-muted-foreground">Review and approve or request changes to this plan</p>
                         </div>
+                      </div>
+
+                      {/* Waiting indicator */}
+                      <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded flex items-center gap-1.5">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                        </span>
+                        Awaiting Approval
+                      </span>
+
+                      {/* Author identity badge */}
+                      {identity && (
+                        <>
+                          <div className="h-5 w-px bg-border" />
+                          <button
+                            onClick={() => setShowNameDialog(true)}
+                            className="px-2 py-0.5 text-xs rounded flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer bg-muted text-muted-foreground hover:text-foreground"
+                            title="Click to change your name"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-primary" />
+                            {identity.name}
+                          </button>
+                        </>
                       )}
                     </div>
-                    {msg.type === 'user' && (
-                      <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
+                  </div>
+                </div>
+
+                {/* Chat history (collapsed) */}
+                {messages.length > 0 && (
+                  <div className="border-b border-border bg-muted/30">
+                    <details className="group">
+                      <summary className="px-6 py-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+                        <span className="group-open:rotate-90 transition-transform">▶</span>
+                        {messages.length} previous messages
+                      </summary>
+                      <div className="max-h-48 overflow-auto px-6 py-2 space-y-2">
+                        {messages.slice(-10).map((msg, index) => (
+                          <div key={index} className="flex gap-2 text-xs">
+                            <div className="shrink-0">{getMessageIcon(msg)}</div>
+                            <div className="text-muted-foreground line-clamp-2">{msg.content}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+
+                {/* Plan content */}
+                <main className="flex-1 overflow-y-auto pb-24">
+                  <div className="flex justify-center py-8 px-4">
+                    <PlanViewer
+                      ref={viewerRef}
+                      blocks={planBlocks}
+                      markdown={pendingPlan.content}
+                      annotations={annotations}
+                      onAddAnnotation={handleAddAnnotation}
+                      onSelectAnnotation={handleSelectAnnotation}
+                      onRemoveAnnotation={handleDeleteAnnotation}
+                      selectedAnnotationId={selectedAnnotationId}
+                    />
+                  </div>
+                </main>
+              </div>
+
+              {/* Annotation Sidebar */}
+              <AnnotationSidebar
+                annotations={annotations}
+                blocks={planBlocks}
+                onSelect={handleSelectAnnotation}
+                onDelete={handleDeleteAnnotation}
+                selectedId={selectedAnnotationId}
+              />
+
+              {/* Decision bar */}
+              <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-6 py-4 z-50">
+                <div className="max-w-3xl mx-auto flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    {annotations.length > 0 ? (
+                      <span>{annotations.length} annotation{annotations.length !== 1 ? 's' : ''} - will be sent as feedback</span>
+                    ) : (
+                      <span>Add annotations to request changes</span>
                     )}
                   </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input - Fixed at bottom */}
-            <div className="border-t border-border p-4 shrink-0 bg-background">
-              <div className="flex gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    canSendMessage
-                      ? 'Type a message...'
-                      : canResume
-                      ? 'Click Resume to continue the session...'
-                      : isRunning
-                      ? 'Connecting...'
-                      : 'Start the agent first...'
-                  }
-                  disabled={!canSendMessage}
-                  rows={1}
-                  className="flex-1 px-4 py-2 text-sm bg-muted border border-border rounded-lg resize-none focus:outline-none focus:border-primary disabled:opacity-50"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!canSendMessage || !inputValue.trim()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                >
-                  {sending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleRejectPlan}
+                      disabled={isApproving || annotations.length === 0}
+                      className="px-4 py-2 text-sm font-medium text-red-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      title={annotations.length === 0 ? 'Add annotations to request changes' : undefined}
+                    >
+                      {isApproving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Request Changes
+                    </button>
+                    <button
+                      onClick={handleApprovePlan}
+                      disabled={isApproving}
+                      className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isApproving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Approve Plan
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Press Enter to send, Shift+Enter for new line
-              </p>
+
+              {/* Author name dialog */}
+              <AuthorNameDialog
+                open={showNameDialog}
+                onClose={() => setShowNameDialog(false)}
+                onSubmit={handleSetAuthorName}
+                currentName={identity?.name}
+              />
             </div>
-          </div>
+          ) : (
+            /* Normal Chat Mode */
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* Messages - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    {isRunning ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        <span>Waiting for response...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Bot className="w-12 h-12 mx-auto text-muted-foreground/50" />
+                        <p>Start the agent to begin chatting</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  messages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex gap-3 ${
+                        msg.type === 'user' ? 'justify-end' : ''
+                      }`}
+                    >
+                      {msg.type !== 'user' && (
+                        <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
+                      )}
+                      <div
+                        className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.type === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card border border-border'
+                        }`}
+                      >
+                        {msg.type === 'assistant' ? (
+                          <MarkdownRenderer content={msg.content} className="text-sm" />
+                        ) : (
+                          <div
+                            className={`text-sm whitespace-pre-wrap break-words ${
+                              msg.type === 'tool' ? 'text-muted-foreground font-mono text-xs' : ''
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        )}
+                      </div>
+                      {msg.type === 'user' && (
+                        <div className="shrink-0 mt-1">{getMessageIcon(msg)}</div>
+                      )}
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input - Fixed at bottom */}
+              <div className="border-t border-border p-4 shrink-0 bg-background">
+                <div className="flex gap-2">
+                  <textarea
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={
+                      canSendMessage
+                        ? 'Type a message...'
+                        : canResume
+                        ? 'Click Resume to continue the session...'
+                        : isRunning
+                        ? 'Connecting...'
+                        : 'Start the agent first...'
+                    }
+                    disabled={!canSendMessage}
+                    rows={1}
+                    className="flex-1 px-4 py-2 text-sm bg-muted border border-border rounded-lg resize-none focus:outline-none focus:border-primary disabled:opacity-50"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!canSendMessage || !inputValue.trim()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Press Enter to send, Shift+Enter for new line
+                </p>
+              </div>
+            </div>
+          )
         ) : (
           /* Diff View */
           <div className="flex-1 flex">

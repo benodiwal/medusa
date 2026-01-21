@@ -22,7 +22,7 @@ import {
   CheckCircle,
   FileCode,
 } from 'lucide-react';
-import { PlanItem, PlanStatus, Task, TaskStatus } from '../types';
+import { PlanItem, PlanStatus, Task, TaskStatus, TaskPlan } from '../types';
 import { PlanCard } from '../components/kanban/PlanCard';
 import { PlanReviewModal } from '../components/kanban/PlanReviewModal';
 import { CreateTaskModal, AgentOutputModal, TaskPreviewModal } from '../components/tasks';
@@ -60,6 +60,10 @@ export default function UnifiedKanban() {
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
   const [previewPlan, setPreviewPlan] = useState<PlanItem | null>(null);
   const [committingTaskId, setCommittingTaskId] = useState<string | null>(null);
+
+  // Task plans (when agent enters plan mode within a task)
+  const [taskPlans, setTaskPlans] = useState<Map<string, TaskPlan>>(new Map());
+  const previousTaskPlanIdsRef = useRef<Set<string>>(new Set());
 
   // Notifications
   const previousPlanIdsRef = useRef<Set<string>>(new Set());
@@ -111,6 +115,23 @@ export default function UnifiedKanban() {
       previousPlanIdsRef.current = currentPendingIds;
       setPlans(allPlans);
       setTasks(allTasks);
+
+      // Check for task plans (when agent enters plan mode within a task)
+      const inProgressTasks = allTasks.filter(t => t.status === TaskStatus.InProgress && t.agent_pid);
+      const newTaskPlans = new Map<string, TaskPlan>();
+
+      for (const task of inProgressTasks) {
+        try {
+          const plan = await invoke<TaskPlan | null>('get_task_plan', { taskId: task.id });
+          if (plan) {
+            newTaskPlans.set(task.id, plan);
+          }
+        } catch {
+          // Task has no pending plan, which is fine
+        }
+      }
+
+      setTaskPlans(newTaskPlans);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -123,6 +144,23 @@ export default function UnifiedKanban() {
     const interval = setInterval(loadData, 3000); // Standardized polling interval
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Auto-open output modal when a new task plan is detected
+  useEffect(() => {
+    // Find new task plans that weren't in the previous set
+    for (const [taskId] of taskPlans) {
+      if (!previousTaskPlanIdsRef.current.has(taskId)) {
+        // New plan detected - find the task and open modal
+        const taskToOpen = tasks.find(t => t.id === taskId);
+        if (taskToOpen) {
+          setOutputTask(taskToOpen);
+          break; // Only open one at a time
+        }
+      }
+    }
+    // Update previous task plan IDs
+    previousTaskPlanIdsRef.current = new Set(taskPlans.keys());
+  }, [taskPlans, tasks]);
 
   // Listen for agent status changes
   useEffect(() => {
@@ -316,6 +354,7 @@ export default function UnifiedKanban() {
   // Count items
   const totalItems = plans.length + tasks.length;
   const runningAgents = tasks.filter(t => t.agent_pid).length;
+  const pendingTaskPlans = taskPlans.size;
 
   if (loading) {
     return (
@@ -351,6 +390,12 @@ export default function UnifiedKanban() {
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 {runningAgents} running
+              </span>
+            )}
+            {pendingTaskPlans > 0 && (
+              <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                {pendingTaskPlans} plan{pendingTaskPlans > 1 ? 's' : ''} waiting
               </span>
             )}
           </div>
@@ -471,6 +516,8 @@ export default function UnifiedKanban() {
                         onViewOutput={() => setOutputTask(task!)}
                         onPreview={isDoneTask ? () => setPreviewTask(task!) : undefined}
                         isCommitting={committingTaskId === task!.id}
+                        pendingPlan={taskPlans.get(task!.id)}
+                        onReviewPlan={() => setOutputTask(task!)}
                       />
                     );
                   })}
@@ -541,6 +588,7 @@ export default function UnifiedKanban() {
           onClose={() => setPreviewPlan(null)}
         />
       )}
+
     </div>
   );
 }
@@ -556,6 +604,8 @@ function TaskCardInline({
   onViewOutput,
   onPreview,
   isCommitting,
+  pendingPlan,
+  onReviewPlan,
 }: {
   task: Task;
   onOpen?: () => void;
@@ -566,6 +616,8 @@ function TaskCardInline({
   onViewOutput: () => void;
   onPreview?: () => void;
   isCommitting: boolean;
+  pendingPlan?: TaskPlan;
+  onReviewPlan?: () => void;
 }) {
   const getTimeAgo = (timestamp: number) => {
     const seconds = Math.floor(Date.now() / 1000 - timestamp);
@@ -770,7 +822,7 @@ function TaskCardInline({
       )}
 
       {/* Progress indicator for running tasks */}
-      {isRunning && (
+      {isRunning && !pendingPlan && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -778,6 +830,19 @@ function TaskCardInline({
             </div>
             <span className="text-xs text-muted-foreground">Working...</span>
           </div>
+        </div>
+      )}
+
+      {/* Plan waiting for approval */}
+      {pendingPlan && onReviewPlan && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <button
+            onClick={(e) => { e.stopPropagation(); onReviewPlan(); }}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors animate-pulse"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            Review Plan
+          </button>
         </div>
       )}
 
@@ -792,7 +857,7 @@ function TaskCardInline({
       )}
 
       {/* Send to Review button */}
-      {!isCommitting && isInProgressNotRunning && (
+      {!isCommitting && isInProgressNotRunning && !pendingPlan && (
         <div className="mt-3 pt-3 border-t border-border">
           <button
             onClick={(e) => { e.stopPropagation(); onSendToReview(); }}

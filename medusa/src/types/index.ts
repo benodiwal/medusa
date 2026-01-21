@@ -178,3 +178,13 @@ export interface MedusaSettings {
   hook_timeout_minutes: number;
 }
 
+// Task plan pending review (when agent enters plan mode)
+export interface TaskPlan {
+  task_id: string;
+  plan_file: string;
+  response_file: string;
+  cwd: string;
+  content: string;
+  created_at: number;
+}
+

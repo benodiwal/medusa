@@ -62,6 +62,9 @@ pub fn run() {
             commands::send_agent_message,
             commands::has_active_agent_session,
             commands::get_task_file_diff,
+            // Task plan review commands
+            commands::get_task_plan,
+            commands::respond_to_task_plan,
             // Review commands
             commands::merge_task,
             commands::reject_task,

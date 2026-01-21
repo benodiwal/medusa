@@ -287,6 +287,7 @@ impl TaskAgentManager {
         let mut cmd = Command::new("/bin/zsh");
         cmd.args(["-c", &shell_cmd])
             .env("HOME", &home)
+            .env("MEDUSA_TASK_ID", task_id) // Pass task ID so hook script knows this is a task agent
             .current_dir(&worktree_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

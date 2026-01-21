@@ -1497,6 +1497,106 @@ pub async fn get_task_file_diff(task_id: String, file_path: String) -> Result<St
         .map_err(|e| format!("Failed to get diff: {}", e))
 }
 
+// ============== Task Plan Review ==============
+
+/// Task plan pending review (from agent entering plan mode)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskPlan {
+    pub task_id: String,
+    pub plan_file: String,
+    pub response_file: String,
+    pub cwd: String,
+    pub content: String,
+    pub created_at: u64,
+}
+
+/// Get the task plans directory
+fn get_task_plans_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".medusa")
+        .join("task-plans")
+}
+
+/// Get pending plan for a task (if agent entered plan mode)
+#[tauri::command]
+pub async fn get_task_plan(task_id: String) -> Result<Option<TaskPlan>, String> {
+    let plan_file = get_task_plans_dir().join(format!("{}.json", task_id));
+
+    if !plan_file.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&plan_file)
+        .map_err(|e| format!("Failed to read task plan: {}", e))?;
+
+    let pending: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse task plan: {}", e))?;
+
+    let plan_path = pending.get("plan_file")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing plan_file")?;
+
+    let plan_content = fs::read_to_string(plan_path)
+        .map_err(|e| format!("Failed to read plan content: {}", e))?;
+
+    Ok(Some(TaskPlan {
+        task_id: task_id.clone(),
+        plan_file: plan_path.to_string(),
+        response_file: pending.get("response_file")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        cwd: pending.get("cwd")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        content: plan_content,
+        created_at: pending.get("created_at")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0),
+    }))
+}
+
+/// Respond to a task's plan (approve or reject)
+#[tauri::command]
+pub async fn respond_to_task_plan(task_id: String, approved: bool, feedback: Option<String>) -> Result<(), String> {
+    info!("Responding to task plan {}: approved={}", task_id, approved);
+
+    let plan_file = get_task_plans_dir().join(format!("{}.json", task_id));
+
+    if !plan_file.exists() {
+        return Err("No pending plan for this task".to_string());
+    }
+
+    let content = fs::read_to_string(&plan_file)
+        .map_err(|e| format!("Failed to read task plan: {}", e))?;
+
+    let pending: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse task plan: {}", e))?;
+
+    let response_file = pending.get("response_file")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing response_file")?;
+
+    // Write response to the file the hook is waiting for
+    let response = if approved {
+        "APPROVED\n".to_string()
+    } else {
+        format!("REJECTED\n{}", feedback.unwrap_or_default())
+    };
+
+    fs::write(response_file, &response)
+        .map_err(|e| format!("Failed to write response: {}", e))?;
+
+    // Remove the pending plan file
+    fs::remove_file(&plan_file)
+        .map_err(|e| format!("Failed to remove plan file: {}", e))?;
+
+    info!("Task plan {} response written", task_id);
+    Ok(())
+}
+
 /// Merge a task's worktree branch into main and mark as done
 #[tauri::command]
 pub async fn merge_task(task_id: String) -> Result<(), String> {
